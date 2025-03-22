@@ -1,170 +1,158 @@
 package dev.nighter.celesCombat.combat;
 
 import dev.nighter.celesCombat.CelesCombat;
+import dev.nighter.celesCombat.Scheduler;
 import lombok.Getter;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CombatManager {
     private final CelesCombat plugin;
     @Getter private final Map<UUID, Long> playersInCombat;
-    private final Map<UUID, BukkitTask> combatTasks;
-    private final Map<UUID, BukkitTask> countdownTasks;
-
-    // Add a map to track combat opponents
+    private final Map<UUID, Scheduler.Task> combatTasks;
+    private final Map<UUID, Scheduler.Task> countdownTasks;
     private final Map<UUID, UUID> combatOpponents;
 
     public CombatManager(CelesCombat plugin) {
         this.plugin = plugin;
-        this.playersInCombat = new HashMap<>();
-        this.combatTasks = new HashMap<>();
-        this.countdownTasks = new HashMap<>();
-        this.combatOpponents = new HashMap<>();
+        this.playersInCombat = new ConcurrentHashMap<>();
+        this.combatTasks = new ConcurrentHashMap<>();
+        this.countdownTasks = new ConcurrentHashMap<>();
+        this.combatOpponents = new ConcurrentHashMap<>();
     }
 
-    /**
-     * Puts a player in combat
-     */
     public void tagPlayer(Player player, Player attacker) {
+        if (player == null || attacker == null) return;
+
         UUID playerUUID = player.getUniqueId();
         int combatTime = plugin.getConfig().getInt("combat.duration", 20);
 
-        // Check if this is a mutual combat (both players attacking each other)
         boolean alreadyInCombatWithAttacker =
                 isInCombat(player) &&
                         attacker.getUniqueId().equals(combatOpponents.get(playerUUID));
 
-        // If they're already in combat with this specific attacker, only refresh if lower time
         if (alreadyInCombatWithAttacker) {
             long currentEndTime = playersInCombat.get(playerUUID);
             long newEndTime = System.currentTimeMillis() + (combatTime * 1000L);
 
-            // Only update if the new combat time would be longer
             if (newEndTime <= currentEndTime) {
-                return; // Skip tagging as it wouldn't extend combat time
+                return;
             }
         }
 
-        // Store the opponent information
         combatOpponents.put(playerUUID, attacker.getUniqueId());
 
-        // Check if player is already in combat
         if (isInCombat(player)) {
-            // Cancel the existing tasks
-            BukkitTask existingTask = combatTasks.get(playerUUID);
+            Scheduler.Task existingTask = combatTasks.get(playerUUID);
             if (existingTask != null) {
                 existingTask.cancel();
             }
 
-            BukkitTask existingCountdownTask = countdownTasks.get(playerUUID);
+            Scheduler.Task existingCountdownTask = countdownTasks.get(playerUUID);
             if (existingCountdownTask != null) {
                 existingCountdownTask.cancel();
             }
-        } else {
-            // Send combat start message
-            Map<String, String> placeholders = new HashMap<>();
-            placeholders.put("player", player.getName());
-            placeholders.put("time", String.valueOf(combatTime));
-            plugin.getMessageService().sendMessage(player, "combat_tagged", placeholders);
         }
 
-        // Update combat tag time
         playersInCombat.put(playerUUID, System.currentTimeMillis() + (combatTime * 1000L));
 
-        // Create new task to remove combat tag after the specified time
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        // Use the entity's scheduler for player-specific tasks
+        Scheduler.Task task = Scheduler.runEntityTaskLater(player, () -> {
             removeFromCombat(player);
         }, combatTime * 20L);
 
         combatTasks.put(playerUUID, task);
-
-        // Start the countdown timer that updates every second
         startCountdownTimer(player);
     }
 
-    /**
-     * Start a countdown timer that shows the remaining combat time every second
-     */
     private void startCountdownTimer(Player player) {
+        if (player == null) return;
+
         UUID playerUUID = player.getUniqueId();
 
-        // Cancel any existing countdown task
-        BukkitTask existingTask = countdownTasks.get(playerUUID);
+        Scheduler.Task existingTask = countdownTasks.get(playerUUID);
         if (existingTask != null) {
             existingTask.cancel();
         }
 
-        // Create a new task that runs every second
-        BukkitTask countdownTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        Scheduler.Task countdownTask = Scheduler.runEntityTaskTimer(player, () -> {
             if (player.isOnline() && isInCombat(player)) {
                 int remainingTime = getRemainingCombatTime(player);
 
-                // Send countdown message
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("time", String.valueOf(remainingTime));
-
-                // Check if we should display the countdown message
-                if (plugin.getConfig().getBoolean("combat.show_countdown", true)) {
+                // Only show countdown if time is > 0 to avoid showing 0
+                if (remainingTime > 0 && plugin.getConfig().getBoolean("combat.show_countdown", true)) {
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("player", player.getName());
+                    placeholders.put("time", String.valueOf(remainingTime));
                     plugin.getMessageService().sendMessage(player, "combat_countdown", placeholders);
                 }
             } else {
-                // If player is no longer in combat, cancel this task
-                BukkitTask task = countdownTasks.get(playerUUID);
+                Scheduler.Task task = countdownTasks.get(playerUUID);
                 if (task != null) {
                     task.cancel();
                     countdownTasks.remove(playerUUID);
                 }
             }
-        }, 20L, 20L); // 20 ticks = 1 second
+        }, 0L, 20L); // Start immediately (0L) and run every second (20L)
 
         countdownTasks.put(playerUUID, countdownTask);
     }
 
-    /**
-     * Removes a player from combat
-     */
+    public void punishCombatLogout(Player player) {
+        if (player == null || !player.isOnline()) return;
+
+        player.setHealth(0);
+        applyLogoutEffects(player.getLocation());
+        removeFromCombat(player);
+    }
+
+    private void applyLogoutEffects(Location location) {
+        if (location == null) return;
+
+        // Schedule location-based effects with the location scheduler
+        Scheduler.runLocationTask(location, () -> {
+            if (plugin.getConfig().getBoolean("combat.logout_effects.lightning", true)) {
+                location.getWorld().strikeLightningEffect(location);
+            }
+
+            String soundName = plugin.getConfig().getString("combat.logout_effects.sound", "ENTITY_LIGHTNING_BOLT_THUNDER");
+            if (!soundName.isEmpty()) {
+                try {
+                    Sound sound = Sound.valueOf(soundName);
+                    location.getWorld().playSound(location, sound, 1.0F, 1.0F);
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid sound effect in config: " + soundName);
+                }
+            }
+        });
+    }
+
     public void removeFromCombat(Player player) {
         if (player == null) return;
 
         UUID playerUUID = player.getUniqueId();
 
-        if (isInCombat(player)) {
-            playersInCombat.remove(playerUUID);
+        playersInCombat.remove(playerUUID);
+        combatOpponents.remove(playerUUID);
 
-            // Remove opponent information
-            combatOpponents.remove(playerUUID);
+        Scheduler.Task task = combatTasks.remove(playerUUID);
+        if (task != null) {
+            task.cancel();
+        }
 
-            // Cancel the combat task if it exists
-            BukkitTask task = combatTasks.remove(playerUUID);
-            if (task != null) {
-                task.cancel();
-            }
-
-            // Cancel the countdown task if it exists
-            BukkitTask countdownTask = countdownTasks.remove(playerUUID);
-            if (countdownTask != null) {
-                countdownTask.cancel();
-            }
-
-            // Only send the combat ended message if the player is online
-            // This prevents sending messages to dead players
-            if (player.isOnline() && player.getHealth() > 0) {
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                plugin.getMessageService().sendMessage(player, "combat_ended", placeholders);
-            }
+        Scheduler.Task countdownTask = countdownTasks.remove(playerUUID);
+        if (countdownTask != null) {
+            countdownTask.cancel();
         }
     }
 
-    /**
-     * Gets the player's current combat opponent
-     */
     public Player getCombatOpponent(Player player) {
         if (player == null || !isInCombat(player)) return null;
 
@@ -174,9 +162,6 @@ public class CombatManager {
         return Bukkit.getPlayer(opponentUUID);
     }
 
-    /**
-     * Checks if a player is in combat
-     */
     public boolean isInCombat(Player player) {
         if (player == null) return false;
 
@@ -188,7 +173,6 @@ public class CombatManager {
 
         long combatEndTime = playersInCombat.get(playerUUID);
 
-        // If current time is past the end time, remove from combat
         if (System.currentTimeMillis() > combatEndTime) {
             removeFromCombat(player);
             return false;
@@ -197,50 +181,31 @@ public class CombatManager {
         return true;
     }
 
-    /**
-     * Gets the remaining combat time in seconds
-     */
     public int getRemainingCombatTime(Player player) {
         if (!isInCombat(player)) return 0;
 
         long endTime = playersInCombat.get(player.getUniqueId());
         long currentTime = System.currentTimeMillis();
 
-        // Calculate remaining time in seconds
-        return (int) Math.max(0, (endTime - currentTime) / 1000);
+        // Math.ceil for the countdown to show 20, 19, ... 2, 1 instead of 19, 18, ... 1, 0
+        return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
     }
 
-    /**
-     * Handles when a player kills another player who is in combat
-     */
-    public void handlePlayerKill(Player killer, Player victim) {
-        // Check if the killer is in combat
-        if (isInCombat(killer)) {
-            // Remove the killer from combat
-            removeFromCombat(killer);
-
-            // Send message to killer
-            Map<String, String> placeholders = new HashMap<>();
-            placeholders.put("player", killer.getName());
-            placeholders.put("victim", victim.getName());
-            plugin.getMessageService().sendMessage(killer, "combat_exit_on_kill", placeholders);
+    public void updateMutualCombat(Player player1, Player player2) {
+        if (player1 != null && player1.isOnline() && player2 != null && player2.isOnline()) {
+            tagPlayer(player1, player2);
+            tagPlayer(player2, player1);
         }
     }
 
-    /**
-     * Cleans up all combat tasks
-     */
     public void shutdown() {
-        combatTasks.values().forEach(BukkitTask::cancel);
+        combatTasks.values().forEach(Scheduler.Task::cancel);
         combatTasks.clear();
 
-        countdownTasks.values().forEach(BukkitTask::cancel);
+        countdownTasks.values().forEach(Scheduler.Task::cancel);
         countdownTasks.clear();
 
         playersInCombat.clear();
         combatOpponents.clear();
-
-        // Clean up the explosion tracker
-        ExplosionTracker.clearAll();
     }
 }

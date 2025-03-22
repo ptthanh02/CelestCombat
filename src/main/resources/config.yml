@@ -1,5 +1,4 @@
-# CelesCombat Configuration
-
+# Language settings
 language: en_US
 
 # Combat settings
@@ -9,6 +8,7 @@ combat:
 
   # Commands that are blocked during combat
   blocked_commands:
+    - "rtp"
     - "tp"
     - "teleport"
     - "spawn"
@@ -21,15 +21,12 @@ combat:
     - "ec"
     - "vanish"
     - "v"
-    - "lobby"
 
-  # Crystal PVP Settings
-  cpvp:
-    enabled: true                # Whether to enable CPVP combat tagging
-    explosion_radius: 6.0        # Radius to tag players from explosions (blocks)
-    tracking_duration: 20      # How long to track a player as responsible for an explosion/crystal (seconds)
+# Combat logout punishment effects
+logout_effects:
+  # Strike lightning at player location (visual only)
+  lightning: true
 
-    # Track specific damage sources
-    track_crystals: true         # Track and tag for end crystal explosions
-    track_anchors: true          # Track and tag for respawn anchor explosions
-    track_tnt: true              # Track and tag for TNT explosions
+  # Common sounds: ENTITY_LIGHTNING_BOLT_THUNDER, ENTITY_GENERIC_EXPLODE,
+  # ENTITY_WITHER_DEATH, ENTITY_ENDER_DRAGON_GROWL
+  sound: "ENTITY_LIGHTNING_BOLT_THUNDER"

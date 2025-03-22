@@ -1,7 +1,6 @@
-package dev.nighter.celesCombat.language.gui;
+package dev.nighter.celesCombat.language;
 
 import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.language.LanguageManager;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;

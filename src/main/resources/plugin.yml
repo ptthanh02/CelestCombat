@@ -3,13 +3,14 @@ version: '${version}'
 main: dev.nighter.celesCombat.CelesCombat
 api-version: '1.21'
 authors: [ Nighter ]
-description: A comprehensive combat tag system for Minecraft
+description: A simple combat logging plugin
+folia-supported: true
 
 commands:
-  combat:
+  celescombat:
     description: Main command for CelesCombat
-    usage: /combat
-    aliases: [cbt, combattag]
+    usage: /celescombat
+    aliases: [cc, combatlog]
 
 permissions:
   celescombat.bypass.commands:
@@ -17,16 +18,4 @@ permissions:
     default: op
   celescombat.command.reload:
     description: Allows players to reload the plugin configuration
-    default: op
-  celescombat.command.status:
-    description: Allows players to check their combat status
-    default: true
-  celescombat.command.tag:
-    description: Allows players to force tag other players
-    default: op
-  celescombat.command.untag:
-    description: Allows players to force untag other players
-    default: op
-  celescombat.command.list:
-    description: Allows players to list all players in combat
     default: op

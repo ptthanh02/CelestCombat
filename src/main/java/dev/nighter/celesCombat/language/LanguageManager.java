@@ -9,22 +9,64 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 
 public class LanguageManager {
     private final CelesCombat plugin;
     @Getter private String defaultLocale;
     private final Map<String, LocaleData> localeMap = new HashMap<>();
+    private final Set<String> activeLocales = new HashSet<>();
+
+    // Enum to represent the different language file types
+    @Getter
+    public enum LanguageFileType {
+        MESSAGES("messages.yml"),
+        GUI("gui.yml"),
+        FORMATTING("formatting.yml");
+
+        private final String fileName;
+
+        LanguageFileType(String fileName) {
+            this.fileName = fileName;
+        }
+
+    }
 
     public LanguageManager(CelesCombat plugin) {
         this.plugin = plugin;
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
         loadLanguages();
+        saveDefaultFiles();
+    }
+
+    public LanguageManager(CelesCombat plugin, LanguageFileType... fileTypes) {
+        this.plugin = plugin;
+        this.defaultLocale = plugin.getConfig().getString("language", "en_US");
+        loadLanguages(fileTypes);
+        saveDefaultFiles();
+    }
+
+    private void saveDefaultFiles() {
+        saveResource("language/vi_VN/messages.yml");
+    }
+
+    private void saveResource(String resourcePath) {
+        File resourceFile = new File(plugin.getDataFolder(), resourcePath);
+        if (!resourceFile.exists()) {
+            resourceFile.getParentFile().mkdirs();
+            plugin.saveResource(resourcePath, false);
+        }
     }
 
     public void loadLanguages() {
+        loadLanguages(LanguageFileType.values());
+    }
+
+    public void loadLanguages(LanguageFileType... fileTypes) {
         File langDir = new File(plugin.getDataFolder(), "language");
         if (!langDir.exists() && !langDir.mkdirs()) {
             plugin.getLogger().severe("Failed to create language directory!");
@@ -32,7 +74,8 @@ public class LanguageManager {
         }
 
         // Load default locale first
-        loadLocale(defaultLocale);
+        loadLocale(defaultLocale, fileTypes);
+        activeLocales.add(defaultLocale);
 
         // Load other locales
         File[] localeDirs = langDir.listFiles(File::isDirectory);
@@ -40,23 +83,65 @@ public class LanguageManager {
             for (File localeDir : localeDirs) {
                 String locale = localeDir.getName();
                 if (!locale.equals(defaultLocale)) {
-                    loadLocale(locale);
+                    loadLocale(locale, fileTypes);
                 }
             }
         }
     }
 
-    private void loadLocale(String locale) {
+    public void reloadLanguages() {
+        localeMap.clear();
+
+        // Update the default locale from config when reloading
+        this.defaultLocale = plugin.getConfig().getString("language", "en_US");
+
+        // Reload default locale
+        loadLocale(defaultLocale, LanguageFileType.values());
+
+        // Only reload active locales
+        for (String locale : activeLocales) {
+            if (!locale.equals(defaultLocale)) {
+                loadLocale(locale, LanguageFileType.values());
+            }
+        }
+
+        plugin.getLogger().info("Successfully reloaded language files for locales: " + String.join(", ", activeLocales));
+    }
+
+    public void trackLocaleUsage(String locale) {
+        activeLocales.add(locale);
+    }
+
+    private void loadLocale(String locale, LanguageFileType... fileTypes) {
         File localeDir = new File(plugin.getDataFolder(), "language/" + locale);
         if (!localeDir.exists() && !localeDir.mkdirs()) {
             plugin.getLogger().severe("Failed to create locale directory for " + locale);
             return;
         }
 
-        // Create and load or update all required files
-        YamlConfiguration messages = loadOrCreateFile(locale, "messages.yml");
-        YamlConfiguration gui = loadOrCreateFile(locale, "gui.yml");
-        YamlConfiguration formatting = loadOrCreateFile(locale, "formatting.yml");
+        // Create and load or update only the specified files
+        YamlConfiguration messages = null;
+        YamlConfiguration gui = null;
+        YamlConfiguration formatting = null;
+
+        for (LanguageFileType fileType : fileTypes) {
+            switch (fileType) {
+                case MESSAGES:
+                    messages = loadOrCreateFile(locale, fileType.getFileName());
+                    break;
+                case GUI:
+                    gui = loadOrCreateFile(locale, fileType.getFileName());
+                    break;
+                case FORMATTING:
+                    formatting = loadOrCreateFile(locale, fileType.getFileName());
+                    break;
+            }
+        }
+
+        // If a file wasn't specified, create an empty configuration
+        if (messages == null) messages = new YamlConfiguration();
+        if (gui == null) gui = new YamlConfiguration();
+        if (formatting == null) formatting = new YamlConfiguration();
 
         localeMap.put(locale, new LocaleData(messages, gui, formatting));
     }
@@ -116,6 +201,9 @@ public class LanguageManager {
     }
 
     public String getMessage(String key, String locale, Map<String, String> placeholders) {
+        // Track locale usage when accessed
+        trackLocaleUsage(locale);
+
         if (!isMessageEnabled(key, locale)) {
             return null;
         }
@@ -142,6 +230,7 @@ public class LanguageManager {
     }
 
     public String getTitle(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isMessageEnabled(key, locale)) {
             return null;
         }
@@ -149,6 +238,7 @@ public class LanguageManager {
     }
 
     public String getSubtitle(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isMessageEnabled(key, locale)) {
             return null;
         }
@@ -156,6 +246,7 @@ public class LanguageManager {
     }
 
     public String getActionBar(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isMessageEnabled(key, locale)) {
             return null;
         }
@@ -163,6 +254,7 @@ public class LanguageManager {
     }
 
     public String getSound(String key, String locale) {
+        trackLocaleUsage(locale);
         if (!isMessageEnabled(key, locale)) {
             return null;
         }
@@ -180,6 +272,7 @@ public class LanguageManager {
     }
 
     public String getGuiTitle(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isGuiElementEnabled(key, locale)) {
             return null;
         }
@@ -201,6 +294,7 @@ public class LanguageManager {
     }
 
     public String getGuiItemName(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isGuiElementEnabled(key, locale)) {
             return null;
         }
@@ -222,6 +316,7 @@ public class LanguageManager {
     }
 
     public String[] getGuiItemLore(String key, String locale, Map<String, String> placeholders) {
+        trackLocaleUsage(locale);
         if (!isGuiElementEnabled(key, locale)) {
             return new String[0];
         }
@@ -241,6 +336,7 @@ public class LanguageManager {
     }
 
     public String getGuiItemSound(String key, String locale) {
+        trackLocaleUsage(locale);
         if (!isGuiElementEnabled(key, locale)) {
             return null;
         }
@@ -258,6 +354,7 @@ public class LanguageManager {
     }
 
     public String formatNumber(double number, String locale) {
+        trackLocaleUsage(locale);
         LocaleData localeData = getLocaleData(locale);
         String format;
 
