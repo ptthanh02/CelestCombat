@@ -1,0 +1,35 @@
+# CelesCombat Configuration
+
+language: en_US
+
+# Combat settings
+combat:
+  # Duration of combat tag in seconds
+  duration: 20
+
+  # Commands that are blocked during combat
+  blocked_commands:
+    - "tp"
+    - "teleport"
+    - "spawn"
+    - "home"
+    - "tpa"
+    - "tpahere"
+    - "tpaccept"
+    - "warp"
+    - "enderchest"
+    - "ec"
+    - "vanish"
+    - "v"
+    - "lobby"
+
+  # Crystal PVP Settings
+  cpvp:
+    enabled: true                # Whether to enable CPVP combat tagging
+    explosion_radius: 6.0        # Radius to tag players from explosions (blocks)
+    tracking_duration: 20      # How long to track a player as responsible for an explosion/crystal (seconds)
+
+    # Track specific damage sources
+    track_crystals: true         # Track and tag for end crystal explosions
+    track_anchors: true          # Track and tag for respawn anchor explosions
+    track_tnt: true              # Track and tag for TNT explosions
