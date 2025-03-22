@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CelesCombat-${{ env.VERSION }}
-          path: /build/libs/CelesCombat-${{ env.VERSION }}.jar
+          path: build/libs/CelesCombat-${{ env.VERSION }}.jar
           retention-days: 90
           if-no-files-found: error
 
