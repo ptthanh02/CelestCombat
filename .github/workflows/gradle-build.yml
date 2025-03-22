@@ -63,8 +63,8 @@ jobs:
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SmartSpawner-${{ env.VERSION }}
-          path: core/build/libs/SmartSpawner-${{ env.VERSION }}.jar
+          name: CelesCombat-${{ env.VERSION }}
+          path: core/build/libs/CelesCombat-${{ env.VERSION }}.jar
           retention-days: 90
           if-no-files-found: error
 
