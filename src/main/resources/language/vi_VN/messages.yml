@@ -17,7 +17,7 @@ command_blocked_in_combat:
   sound: BLOCK_ANVIL_LAND
 
 enderpearl_cooldown:
-  message: "&#E67E22Bạn phải chờ %time%s trước khi được sử dụng ender pearl."
+  action_bar: "&#E67E22Bạn phải chờ %time%s trước khi được sử dụng ender pearl."
   sound: BLOCK_NOTE_BLOCK_PLING
 
 kill_reward_received:
