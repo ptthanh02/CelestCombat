@@ -29,8 +29,11 @@ logout_effects:
 
   # Common sounds: ENTITY_LIGHTNING_BOLT_THUNDER, ENTITY_GENERIC_EXPLODE,
   # ENTITY_WITHER_DEATH, ENTITY_ENDER_DRAGON_GROWL
+  # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
-enderpearl:
-  # Cooldown duration in seconds
-  cooldown: 10
+# Ender pearl cooldown
+enderpearl_cooldown:
+  enabled: true
+  # Ender pearl cooldown duration in seconds
+  duration: 10

@@ -91,7 +91,7 @@ public class CombatManager {
                 int remainingTime = getRemainingCombatTime(player);
 
                 // Only show countdown if time is > 0 to avoid showing 0
-                if (remainingTime > 0 && plugin.getConfig().getBoolean("combat.show_countdown", true)) {
+                if (remainingTime > 0) {
                     Map<String, String> placeholders = new HashMap<>();
                     placeholders.put("player", player.getName());
                     placeholders.put("time", String.valueOf(remainingTime));
@@ -207,12 +207,22 @@ public class CombatManager {
     public void setEnderPearlCooldown(Player player) {
         if (player == null) return;
 
-        int cooldownTime = plugin.getConfig().getInt("enderpearl.cooldown", 10);
+        // Only set cooldown if enabled in config
+        if (!plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true)) {
+            return;
+        }
+
+        int cooldownTime = plugin.getConfig().getInt("enderpearl_cooldown.duration", 10);
         enderPearlCooldowns.put(player.getUniqueId(), System.currentTimeMillis() + (cooldownTime * 1000L));
     }
 
     public boolean isEnderPearlOnCooldown(Player player) {
         if (player == null) return false;
+
+        // If ender pearl cooldowns are disabled in config, always return false
+        if (!plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true)) {
+            return false;
+        }
 
         UUID playerUUID = player.getUniqueId();
         if (!enderPearlCooldowns.containsKey(playerUUID)) {
