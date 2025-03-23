@@ -13,6 +13,18 @@ command_blocked_in_combat:
   message: "&#E67E22You cannot use /%command% while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
   sound: BLOCK_ANVIL_LAND
 
+combat_no_safe_zone:
+  message: "&#E67E22You cannot enter safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  sound: BLOCK_ANVIL_LAND
+
+combat_no_pearl_safezone:
+  message: "&#E67E22You cannot ender pearl into safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  sound: BLOCK_ANVIL_LAND
+
+combat_no_command_teleport:
+  message: "&#E67E22You cannot teleport while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  sound: BLOCK_ANVIL_LAND
+
 no_permission:
   message: "&#E94E77You don't have permission to use this command."
   sound: ENTITY_VILLAGER_NO

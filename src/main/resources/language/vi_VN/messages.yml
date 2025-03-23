@@ -10,7 +10,19 @@ player_died_combat_logout:
   sound: ENTITY_WITHER_HURT
 
 command_blocked_in_combat:
-  message: "&#E67E22Bạn không thể sử dụng lệnh /%command% khi đang trong chiến đấu! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
+  message: "&#E67E22Bạn không thể sử dụng lệnh /%command% khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
+  sound: BLOCK_ANVIL_LAND
+
+combat_no_safe_zone:
+  message: "&#E67E22Bạn không thể vào khu vực an toàn khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
+  sound: BLOCK_ANVIL_LAND
+
+combat_no_pearl_safezone:
+  message: "&#E67E22Bạn không thể sử dụng ender pearl vào khu vực an toàn khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
+  sound: BLOCK_ANVIL_LAND
+
+combat_no_command_teleport:
+  message: "&#E67E22Bạn không thể sử dụng dịch chuyển khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
   sound: BLOCK_ANVIL_LAND
 
 no_permission:
