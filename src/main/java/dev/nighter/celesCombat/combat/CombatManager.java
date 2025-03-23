@@ -115,26 +115,23 @@ public class CombatManager {
         // Store player location for effects before killing them
         final Location location = player.getLocation().clone();
 
-        // Schedule the kill in the player's thread
-        Scheduler.runEntityTask(player, () -> {
-            // Kill the player
-            player.setHealth(0);
+        // Kill the player
+        player.setHealth(0);
 
-            // Schedule effects in the location's thread
-            applyLogoutEffects(location);
+        // Schedule effects in the location's thread
+        applyLogoutEffects(location);
 
-            // Remove from combat in the player's thread
+        // Remove from combat in the player's thread
+        Scheduler.runEntityTaskLater(player, () -> {
+            removeFromCombat(player);
+
+            // Schedule respawn in the player's thread
             Scheduler.runEntityTaskLater(player, () -> {
-                removeFromCombat(player);
-
-                // Schedule respawn in the player's thread
-                Scheduler.runEntityTaskLater(player, () -> {
-                    if (player.isOnline()) {
-                        player.spigot().respawn();
-                    }
-                }, 1L); // Slight delay to ensure death processing is complete
-            }, 1L); // Slight delay to ensure combat state is properly cleared
-        });
+                if (player.isOnline()) {
+                    player.spigot().respawn();
+                }
+            }, 1L); // Slight delay to ensure death processing is complete
+        }, 1L); // Slight delay to ensure combat state is properly cleared
     }
 
     private void applyLogoutEffects(Location location) {
