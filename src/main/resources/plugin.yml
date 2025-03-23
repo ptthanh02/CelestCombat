@@ -16,6 +16,9 @@ permissions:
   celescombat.bypass.commands:
     description: Allows players to use commands while in combat
     default: op
+  celescombat.bypass.pearlcooldown:
+    description: Allows players to use enderpearls while in combat
+    default: op
   celescombat.command.reload:
     description: Allows players to reload the plugin configuration
     default: op

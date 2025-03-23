@@ -21,6 +21,10 @@ combat_no_pearl_safezone:
   message: "&#E67E22Bạn không thể sử dụng ender pearl vào khu vực an toàn khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
   sound: BLOCK_ANVIL_LAND
 
+enderpearl_cooldown:
+  message: "&#E67E22Bạn phải chờ %time%s trước khi được sử dụng ender pearl."
+  sound: BLOCK_ANVIL_LAND
+
 combat_no_command_teleport:
   message: "&#E67E22Bạn không thể sử dụng dịch chuyển khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
   sound: BLOCK_ANVIL_LAND

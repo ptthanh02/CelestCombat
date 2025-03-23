@@ -21,6 +21,10 @@ combat_no_pearl_safezone:
   message: "&#E67E22You cannot ender pearl into safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
   sound: BLOCK_ANVIL_LAND
 
+enderpearl_cooldown:
+  message: "&#E67E22You must wait %time%s before using an ender pearl again."
+  sound: BLOCK_ANVIL_LAND
+
 combat_no_command_teleport:
   message: "&#E67E22You cannot teleport while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
   sound: BLOCK_ANVIL_LAND

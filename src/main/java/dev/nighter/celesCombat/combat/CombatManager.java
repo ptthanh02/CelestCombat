@@ -20,12 +20,16 @@ public class CombatManager {
     private final Map<UUID, Scheduler.Task> countdownTasks;
     private final Map<UUID, UUID> combatOpponents;
 
+    // Ender pearl cooldown map
+    @Getter private final Map<UUID, Long> enderPearlCooldowns;
+
     public CombatManager(CelesCombat plugin) {
         this.plugin = plugin;
         this.playersInCombat = new ConcurrentHashMap<>();
         this.combatTasks = new ConcurrentHashMap<>();
         this.countdownTasks = new ConcurrentHashMap<>();
         this.combatOpponents = new ConcurrentHashMap<>();
+        this.enderPearlCooldowns = new ConcurrentHashMap<>();
     }
 
     public void tagPlayer(Player player, Player attacker) {
@@ -123,7 +127,8 @@ public class CombatManager {
             }
 
             String soundName = plugin.getConfig().getString("combat.logout_effects.sound", "ENTITY_LIGHTNING_BOLT_THUNDER");
-            if (!soundName.isEmpty()) {
+            // Only play sound if not set to "NONE"
+            if (soundName != null && !soundName.isEmpty() && !soundName.equalsIgnoreCase("NONE")) {
                 try {
                     Sound sound = Sound.valueOf(soundName);
                     location.getWorld().playSound(location, sound, 1.0F, 1.0F);
@@ -198,6 +203,40 @@ public class CombatManager {
         }
     }
 
+    // Ender pearl cooldown methods
+    public void setEnderPearlCooldown(Player player) {
+        if (player == null) return;
+
+        int cooldownTime = plugin.getConfig().getInt("enderpearl.cooldown", 10);
+        enderPearlCooldowns.put(player.getUniqueId(), System.currentTimeMillis() + (cooldownTime * 1000L));
+    }
+
+    public boolean isEnderPearlOnCooldown(Player player) {
+        if (player == null) return false;
+
+        UUID playerUUID = player.getUniqueId();
+        if (!enderPearlCooldowns.containsKey(playerUUID)) {
+            return false;
+        }
+
+        long cooldownEndTime = enderPearlCooldowns.get(playerUUID);
+        if (System.currentTimeMillis() > cooldownEndTime) {
+            enderPearlCooldowns.remove(playerUUID);
+            return false;
+        }
+
+        return true;
+    }
+
+    public int getRemainingEnderPearlCooldown(Player player) {
+        if (player == null || !isEnderPearlOnCooldown(player)) return 0;
+
+        long endTime = enderPearlCooldowns.get(player.getUniqueId());
+        long currentTime = System.currentTimeMillis();
+
+        return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
+    }
+
     public void shutdown() {
         combatTasks.values().forEach(Scheduler.Task::cancel);
         combatTasks.clear();
@@ -207,5 +246,6 @@ public class CombatManager {
 
         playersInCombat.clear();
         combatOpponents.clear();
+        enderPearlCooldowns.clear();
     }
 }

@@ -7,6 +7,7 @@ import dev.nighter.celesCombat.language.LanguageManager;
 import dev.nighter.celesCombat.language.GuiService;
 import dev.nighter.celesCombat.language.MessageService;
 import dev.nighter.celesCombat.listeners.CombatListeners;
+import dev.nighter.celesCombat.listeners.EnderPearlListener;
 import dev.nighter.celesCombat.protection.WorldGuardHook;
 import lombok.Getter;
 import org.bukkit.command.PluginCommand;
@@ -46,6 +47,7 @@ public final class CelesCombat extends JavaPlugin {
 
         // Register listeners
         getServer().getPluginManager().registerEvents(new CombatListeners(this, combatManager), this);
+        getServer().getPluginManager().registerEvents(new EnderPearlListener(this, combatManager), this);
 
         // Register WorldGuard hook if available
         if (hasWorldGuard) {
