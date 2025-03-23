@@ -55,21 +55,6 @@ public class CombatListeners implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-
-        if (combatManager.isInCombat(player)) {
-            Player opponent = combatManager.getCombatOpponent(player);
-            playerLoggedOutInCombat.put(player.getUniqueId(), true);
-            combatManager.punishCombatLogout(player);
-            combatManager.removeFromCombat(player);
-            combatManager.removeFromCombat(opponent);
-        } else {
-            playerLoggedOutInCombat.put(player.getUniqueId(), false);
-        }
-    }
-
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -83,16 +68,70 @@ public class CombatListeners implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+
+        if (combatManager.isInCombat(player)) {
+            Player opponent = combatManager.getCombatOpponent(player);
+            playerLoggedOutInCombat.put(player.getUniqueId(), true);
+
+            // Execute kill reward commands for the opponent if they're still online
+            if (opponent != null && opponent.isOnline()) {
+                giveKillRewards(opponent, player);
+            }
+
+            combatManager.punishCombatLogout(player);
+            combatManager.removeFromCombat(player);
+            if (opponent != null) {
+                combatManager.removeFromCombat(opponent);
+            }
+        } else {
+            playerLoggedOutInCombat.put(player.getUniqueId(), false);
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
 
         if (killer != null) {
+            // Execute kill reward commands
+            giveKillRewards(killer, victim);
+
+            // Remove from combat
             combatManager.removeFromCombat(killer);
         }
         combatManager.removeFromCombat(victim);
     }
+
+    private void giveKillRewards(Player killer, Player victim) {
+        if (!plugin.getConfig().getBoolean("kill_rewards.enabled", false)) {
+            return;
+        }
+
+        List<String> commands = plugin.getConfig().getStringList("kill_rewards.commands");
+        for (String command : commands) {
+            // Replace placeholders in command
+            String finalCommand = command
+                    .replace("%killer%", killer.getName())
+                    .replace("%victim%", victim.getName());
+
+            // Execute the command as the console
+            plugin.getServer().dispatchCommand(
+                    plugin.getServer().getConsoleSender(),
+                    finalCommand
+            );
+        }
+
+        // Optional: Notify the killer about rewards
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("killer", killer.getName());
+        placeholders.put("victim", victim.getName());
+        plugin.getMessageService().sendMessage(killer, "kill_reward_received", placeholders);
+    }
+
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {

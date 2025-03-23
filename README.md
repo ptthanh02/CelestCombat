@@ -1,6 +1,6 @@
 # 🌟 **CelesCombat**
 
-A robust combat logging plugin designed for the **CelestSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
+A robust combat logging plugin designed for the **CelestinalSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
 
 ---
 
@@ -111,5 +111,5 @@ For issues, suggestions, or contributions, please reach out via the project's re
 
 ## 💙 **About**
 
-CelesCombat is proudly developed for the CelestSMP server by Nighter.
+CelesCombat is proudly developed for the CelestinalSMP server by Nighter.
 

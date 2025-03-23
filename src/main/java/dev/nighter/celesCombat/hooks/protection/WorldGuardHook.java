@@ -1,4 +1,4 @@
-package dev.nighter.celesCombat.protection;
+package dev.nighter.celesCombat.hooks.protection;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -15,24 +15,19 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
-import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class WorldGuardHook implements Listener {
     private final CelesCombat plugin;
     private final CombatManager combatManager;
     private final Map<UUID, Long> lastMessageTime = new HashMap<>();
-    private final Map<Player, Long> lastCheckTime = new WeakHashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
-    private final long CHECK_COOLDOWN = 100; // 100ms between region checks (reduced from 500ms)
 
     // Cache for recently checked locations
     private final Map<ChunkCoordinate, Boolean> pvpStatusCache = new HashMap<>();
@@ -46,24 +41,6 @@ public class WorldGuardHook implements Listener {
 
         // Schedule regular cache cleanup
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::cleanupCache, 1200L, 1200L); // Run every minute (20 ticks/sec * 60)
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerMove(PlayerMoveEvent event) {
-        // Early return conditions for better performance
-        if (!CelesCombat.hasWorldGuard) {
-            return;
-        }
-
-        // Only process if player changed block position
-        Location from = event.getFrom();
-        Location to = event.getTo();
-        if (to == null || !hasChangedBlock(from, to)) {
-            return;
-        }
-
-        // Check safety zone entry
-        checkSafeZoneEntry(event.getPlayer(), from, to, event::setCancelled);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -93,46 +70,6 @@ public class WorldGuardHook implements Listener {
             // Send message with cause context
             sendTeleportBlockedMessage(player, cause);
         }
-    }
-
-    private void checkSafeZoneEntry(Player player, Location from, Location to, Cancellable cancellable) {
-        // Check if player is in combat
-        if (!combatManager.isInCombat(player)) {
-            return;
-        }
-
-        // Apply cooldown to reduce frequency of checks
-        long currentTime = System.currentTimeMillis();
-        Long lastCheck = lastCheckTime.get(player);
-        if (lastCheck != null && currentTime - lastCheck < CHECK_COOLDOWN) {
-            return;
-        }
-        lastCheckTime.put(player, currentTime);
-
-        // Only prevent entry if moving FROM a PvP area TO a safe zone
-        boolean fromIsPvP = isPvPAllowed(from);
-        boolean toIsSafe = isSafeZone(to);
-
-        if (fromIsPvP && toIsSafe) {
-            // Cancel the movement
-            cancellable.setCancelled(true);
-
-            // Push player back slightly
-            Vector direction = from.toVector().subtract(to.toVector()).normalize();
-            player.setVelocity(direction.multiply(1.0));
-
-            // Send message to player (with cooldown)
-            sendCooldownMessage(player, "combat_no_safe_zone");
-        }
-    }
-
-    private boolean hasChangedBlock(Location from, Location to) {
-        if (from == null || to == null) return false;
-
-        // Faster integer comparison
-        return from.getBlockX() != to.getBlockX() ||
-                from.getBlockY() != to.getBlockY() ||
-                from.getBlockZ() != to.getBlockZ();
     }
 
     /**
@@ -223,7 +160,7 @@ public class WorldGuardHook implements Listener {
     }
 
     private void sendTeleportBlockedMessage(Player player, TeleportCause cause) {
-        String messageKey = "combat_no_safe_zone";
+        String messageKey = "";
 
         // Use specific message for different teleport causes
         if (cause == TeleportCause.ENDER_PEARL) {
@@ -242,11 +179,6 @@ public class WorldGuardHook implements Listener {
             regionExistsCache.clear();
             lastCacheCleanup = currentTime;
         }
-    }
-
-    // Interface to handle event cancellation
-    private interface Cancellable {
-        void setCancelled(boolean cancel);
     }
 
     // Class for caching location's PvP status by chunk

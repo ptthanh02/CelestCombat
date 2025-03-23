@@ -1,4 +1,4 @@
-# Language settings
+# Language settings (en_US, vi_VN)
 language: en_US
 
 # Combat settings
@@ -8,15 +8,20 @@ combat:
 
   # Commands that are blocked during combat
   blocked_commands:
-    - "rtp"
-    - "tp"
-    - "teleport"
-    - "spawn"
-    - "home"
     - "tpa"
     - "tpahere"
+    - "afk"
+    - "spawn"
     - "tpaccept"
+    - "tpacancel"
+    - "rtp"
     - "warp"
+    - "warp spawn"
+    - "warp shop"
+    - "warp worlds"
+    - "warp crates"
+    - "warp afk"
+    - "warp auction"
     - "enderchest"
     - "ec"
     - "vanish"
@@ -32,8 +37,14 @@ logout_effects:
   # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
-# Ender pearl cooldown
+# Ender pearl cooldown (while in combat)
 enderpearl_cooldown:
   enabled: true
   # Ender pearl cooldown duration in seconds
   duration: 10
+
+# Combat kill rewards
+kill_rewards:
+  enabled: true
+  commands:
+    - "donutcratecore shards give %killer% 10"

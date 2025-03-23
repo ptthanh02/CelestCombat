@@ -20,19 +20,19 @@ enderpearl_cooldown:
   message: "&#E67E22You must wait %time%s before using an ender pearl again."
   sound: BLOCK_NOTE_BLOCK_PLING
 
+kill_reward_received:
+  action_bar: "&#A303F9+★10 &7vì đã hạ gục %victim%"
+  sound: ENTITY_PLAYER_LEVELUP
+
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
-combat_no_safe_zone:
-  message: "&#E67E22You cannot enter safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
-  sound: BLOCK_NOTE_BLOCK_PLING
-
 combat_no_pearl_safezone:
-  message: "&#E67E22You cannot ender pearl into safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  action_bar: "&#E67E22Can't pearl in safe zone! &#BF3A49Wait &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 combat_no_command_teleport:
-  message: "&#E67E22You cannot teleport while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  action_bar: "&#E67E22Can't teleport in combat! &#BF3A49Wait &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------

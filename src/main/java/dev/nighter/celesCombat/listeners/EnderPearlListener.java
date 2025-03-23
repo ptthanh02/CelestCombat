@@ -31,16 +31,19 @@ public class EnderPearlListener implements Listener {
         // Check if player is right-clicking with an ender pearl
         if (item != null && item.getType() == Material.ENDER_PEARL &&
                 (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
-            // Check if ender pearl is on cooldown
-            if (combatManager.isEnderPearlOnCooldown(player)) {
-                event.setCancelled(true);
 
-                // Send cooldown message
-                int remainingTime = combatManager.getRemainingEnderPearlCooldown(player);
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("time", String.valueOf(remainingTime));
-                plugin.getMessageService().sendMessage(player, "enderpearl_cooldown", placeholders);
+            if (combatManager.isInCombat(player)) {
+                // Check if ender pearl is on cooldown
+                if (combatManager.isEnderPearlOnCooldown(player) && combatManager.isInCombat(player)) {
+                    event.setCancelled(true);
+
+                    // Send cooldown message
+                    int remainingTime = combatManager.getRemainingEnderPearlCooldown(player);
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("player", player.getName());
+                    placeholders.put("time", String.valueOf(remainingTime));
+                    plugin.getMessageService().sendMessage(player, "enderpearl_cooldown", placeholders);
+                }
             }
         }
     }
@@ -50,19 +53,21 @@ public class EnderPearlListener implements Listener {
         if (event.getEntity() instanceof EnderPearl && event.getEntity().getShooter() instanceof Player) {
             Player player = (Player) event.getEntity().getShooter();
 
-            // Check if ender pearl is on cooldown
-            if (combatManager.isEnderPearlOnCooldown(player)) {
-                event.setCancelled(true);
+            if (combatManager.isInCombat(player)){
+                // Check if ender pearl is on cooldown
+                if (combatManager.isEnderPearlOnCooldown(player)) {
+                    event.setCancelled(true);
 
-                // Send cooldown message
-                int remainingTime = combatManager.getRemainingEnderPearlCooldown(player);
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("time", String.valueOf(remainingTime));
-                plugin.getMessageService().sendMessage(player, "enderpearl_cooldown", placeholders);
-            } else {
-                // Set cooldown when player successfully launches an ender pearl
-                combatManager.setEnderPearlCooldown(player);
+                    // Send cooldown message
+                    int remainingTime = combatManager.getRemainingEnderPearlCooldown(player);
+                    Map<String, String> placeholders = new HashMap<>();
+                    placeholders.put("player", player.getName());
+                    placeholders.put("time", String.valueOf(remainingTime));
+                    plugin.getMessageService().sendMessage(player, "enderpearl_cooldown", placeholders);
+                } else {
+                    // Set cooldown when player successfully launches an ender pearl
+                    combatManager.setEnderPearlCooldown(player);
+                }
             }
         }
     }

@@ -8,7 +8,7 @@ import dev.nighter.celesCombat.language.GuiService;
 import dev.nighter.celesCombat.language.MessageService;
 import dev.nighter.celesCombat.listeners.CombatListeners;
 import dev.nighter.celesCombat.listeners.EnderPearlListener;
-import dev.nighter.celesCombat.protection.WorldGuardHook;
+import dev.nighter.celesCombat.hooks.protection.WorldGuardHook;
 import lombok.Getter;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
