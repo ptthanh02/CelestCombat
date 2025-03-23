@@ -9,7 +9,6 @@ import dev.nighter.celesCombat.language.MessageService;
 import dev.nighter.celesCombat.listeners.CombatListeners;
 import dev.nighter.celesCombat.listeners.EnderPearlListener;
 import dev.nighter.celesCombat.hooks.protection.WorldGuardHook;
-import dev.nighter.celesCombat.listeners.PlayerRespawnFix;
 import lombok.Getter;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
@@ -49,7 +48,6 @@ public final class CelesCombat extends JavaPlugin {
         // Register listeners
         getServer().getPluginManager().registerEvents(new CombatListeners(this, combatManager), this);
         getServer().getPluginManager().registerEvents(new EnderPearlListener(this, combatManager), this);
-        getServer().getPluginManager().registerEvents(new PlayerRespawnFix(this), this);
 
         // Register WorldGuard hook if available
         if (hasWorldGuard) {

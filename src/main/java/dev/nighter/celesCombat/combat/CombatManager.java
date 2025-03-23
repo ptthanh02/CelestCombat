@@ -115,6 +115,7 @@ public class CombatManager {
         player.setHealth(0);
         applyLogoutEffects(player.getLocation());
         removeFromCombat(player);
+        player.spigot().respawn();
     }
 
     private void applyLogoutEffects(Location location) {

@@ -1,7 +1,6 @@
 package dev.nighter.celesCombat.listeners;
 
 import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.Scheduler;
 import dev.nighter.celesCombat.combat.CombatManager;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Entity;
@@ -62,16 +61,9 @@ public class CombatListeners implements Listener {
         UUID playerUUID = player.getUniqueId();
 
         if (playerLoggedOutInCombat.containsKey(playerUUID) && playerLoggedOutInCombat.get(playerUUID)) {
-            // Delay the message and handling until the next tick to avoid chunk loader conflicts
-            Scheduler.runTaskLater(() -> {
-                if (player.isOnline()) {
-                    Map<String, String> placeholders = new HashMap<>();
-                    placeholders.put("player", player.getName());
-                    plugin.getMessageService().sendMessage(player, "player_died_combat_logout", placeholders);
-                }
-                playerLoggedOutInCombat.remove(playerUUID);
-            }, 1L);
-        } else {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("player", player.getName());
+            plugin.getMessageService().sendMessage(player, "player_died_combat_logout", placeholders);
             playerLoggedOutInCombat.remove(playerUUID);
         }
     }
@@ -89,14 +81,11 @@ public class CombatListeners implements Listener {
                 giveKillRewards(opponent, player);
             }
 
-            // Make sure we're handling this on the same thread as the player
-            Scheduler.runEntityTask(player, () -> {
-                combatManager.punishCombatLogout(player);
-                combatManager.removeFromCombat(player);
-                if (opponent != null) {
-                    combatManager.removeFromCombat(opponent);
-                }
-            });
+            combatManager.punishCombatLogout(player);
+            combatManager.removeFromCombat(player);
+            if (opponent != null) {
+                combatManager.removeFromCombat(opponent);
+            }
         } else {
             playerLoggedOutInCombat.put(player.getUniqueId(), false);
         }
@@ -142,6 +131,7 @@ public class CombatListeners implements Listener {
         placeholders.put("victim", victim.getName());
         plugin.getMessageService().sendMessage(killer, "kill_reward_received", placeholders);
     }
+
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
