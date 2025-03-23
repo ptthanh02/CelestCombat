@@ -6,6 +6,9 @@ authors: [ Nighter ]
 description: A simple combat logging plugin
 folia-supported: true
 
+soft-depend:
+  - WorldGuard
+
 commands:
   celescombat:
     description: Main command for CelesCombat

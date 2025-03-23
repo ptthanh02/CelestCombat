@@ -1,8 +1,11 @@
 package dev.nighter.celesCombat.protection;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.flags.Flags;
+import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import dev.nighter.celesCombat.CelesCombat;
@@ -29,10 +32,11 @@ public class WorldGuardHook implements Listener {
     private final Map<UUID, Long> lastMessageTime = new HashMap<>();
     private final Map<Player, Long> lastCheckTime = new WeakHashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
-    private final long CHECK_COOLDOWN = 500; // 500ms between region checks
+    private final long CHECK_COOLDOWN = 100; // 100ms between region checks (reduced from 500ms)
 
     // Cache for recently checked locations
     private final Map<ChunkCoordinate, Boolean> pvpStatusCache = new HashMap<>();
+    private final Map<ChunkCoordinate, Boolean> regionExistsCache = new HashMap<>();
     private final long CACHE_EXPIRY = TimeUnit.SECONDS.toMillis(30); // 30 seconds cache TTL
     private long lastCacheCleanup = System.currentTimeMillis();
 
@@ -79,7 +83,7 @@ public class WorldGuardHook implements Listener {
         Location to = event.getTo();
 
         // Prevent teleportation to safe zones
-        if (to != null && !isPvPAllowed(to) && isPvPAllowed(from)) {
+        if (to != null && isSafeZone(to)) {
             // Get the teleport cause
             TeleportCause cause = event.getCause();
 
@@ -105,14 +109,17 @@ public class WorldGuardHook implements Listener {
         }
         lastCheckTime.put(player, currentTime);
 
-        // Check if player is trying to enter a PvP disabled region
-        if (!isPvPAllowed(to) && isPvPAllowed(from)) {
+        // Only prevent entry if moving FROM a PvP area TO a safe zone
+        boolean fromIsPvP = isPvPAllowed(from);
+        boolean toIsSafe = isSafeZone(to);
+
+        if (fromIsPvP && toIsSafe) {
             // Cancel the movement
             cancellable.setCancelled(true);
 
             // Push player back slightly
             Vector direction = from.toVector().subtract(to.toVector()).normalize();
-            player.setVelocity(direction.multiply(0.3));
+            player.setVelocity(direction.multiply(1.0));
 
             // Send message to player (with cooldown)
             sendCooldownMessage(player, "combat_no_safe_zone");
@@ -126,6 +133,15 @@ public class WorldGuardHook implements Listener {
         return from.getBlockX() != to.getBlockX() ||
                 from.getBlockY() != to.getBlockY() ||
                 from.getBlockZ() != to.getBlockZ();
+    }
+
+    /**
+     * Determines if a location is in a safe zone (a region where PvP is disabled)
+     * @param location The location to check
+     * @return true if the location is in a region AND PvP is disabled there
+     */
+    private boolean isSafeZone(Location location) {
+        return isInAnyRegion(location) && !isPvPAllowed(location);
     }
 
     private boolean isPvPAllowed(Location location) {
@@ -153,6 +169,36 @@ public class WorldGuardHook implements Listener {
         } catch (Exception e) {
             plugin.getLogger().warning("Error checking WorldGuard PvP flag: " + e.getMessage());
             return true; // Default to allowing PvP if there's an error
+        }
+    }
+
+    private boolean isInAnyRegion(Location location) {
+        if (location == null) return false;
+
+        // Check cache first
+        ChunkCoordinate coord = new ChunkCoordinate(location);
+        Boolean cachedResult = regionExistsCache.get(coord);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
+        try {
+            RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+            RegionManager regionManager = container.get(BukkitAdapter.adapt(location.getWorld()));
+            if (regionManager == null) return false;
+
+            BlockVector3 pos = BlockVector3.at(location.getX(), location.getY(), location.getZ());
+            ApplicableRegionSet regions = regionManager.getApplicableRegions(pos);
+
+            boolean result = !regions.getRegions().isEmpty();
+
+            // Cache the result
+            regionExistsCache.put(coord, result);
+
+            return result;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error checking WorldGuard regions: " + e.getMessage());
+            return false;
         }
     }
 
@@ -193,6 +239,7 @@ public class WorldGuardHook implements Listener {
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastCacheCleanup > CACHE_EXPIRY) {
             pvpStatusCache.clear();
+            regionExistsCache.clear();
             lastCacheCleanup = currentTime;
         }
     }
