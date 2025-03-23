@@ -26,19 +26,16 @@ public class PlayerRespawnFix implements Listener {
 
         // Check if player is dead (in respawn screen)
         if (player.isDead()) {
-            //plugin.getLogger().info("Player " + player.getName() + " joined while dead, scheduling respawn");
+            plugin.getLogger().info("Player " + player.getName() + " joined while dead, scheduling respawn");
 
-            // Schedule a delayed respawn to avoid chunk loader conflicts
-            Scheduler.runTaskLater(() -> {
-                if (player.isOnline() && player.isDead()) {
-                    try {
-                        player.spigot().respawn();
-                        //plugin.getLogger().info("Successfully respawned " + player.getName() + " after join");
-                    } catch (Exception e) {
-                        plugin.getLogger().warning("Failed to auto-respawn player: " + e.getMessage());
-                    }
+            if (player.isOnline() && player.isDead()) {
+                try {
+                    player.spigot().respawn();
+                    plugin.getLogger().info("Successfully respawned " + player.getName() + " after join");
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to auto-respawn player: " + e.getMessage());
                 }
-            }, 5L); // Wait 5 ticks (1/4 second) to ensure all systems are ready
+            }
         }
     }
 }
