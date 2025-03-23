@@ -1,5 +1,8 @@
 prefix: "&8[&#4A90E2CelesCombat&8] "
 
+# ------------------------------------------------------
+# Combat messages
+# ------------------------------------------------------
 combat_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%time%s"
 
@@ -13,26 +16,32 @@ command_blocked_in_combat:
   message: "&#E67E22You cannot use /%command% while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
   sound: BLOCK_ANVIL_LAND
 
+enderpearl_cooldown:
+  message: "&#E67E22You must wait %time%s before using an ender pearl again."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
+# ------------------------------------------------------
+# Safe zone messages for third-party protection plugins
+# ------------------------------------------------------
 combat_no_safe_zone:
   message: "&#E67E22You cannot enter safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
-  sound: BLOCK_ANVIL_LAND
+  sound: BLOCK_NOTE_BLOCK_PLING
 
 combat_no_pearl_safezone:
   message: "&#E67E22You cannot ender pearl into safe zones while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
-  sound: BLOCK_ANVIL_LAND
-
-enderpearl_cooldown:
-  message: "&#E67E22You must wait %time%s before using an ender pearl again."
-  sound: BLOCK_ANVIL_LAND
+  sound: BLOCK_NOTE_BLOCK_PLING
 
 combat_no_command_teleport:
   message: "&#E67E22You cannot teleport while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
-  sound: BLOCK_ANVIL_LAND
+  sound: BLOCK_NOTE_BLOCK_PLING
 
+# ------------------------------------------------------
+# Plugin command messages
+# ------------------------------------------------------
 no_permission:
   message: "&#E94E77You don't have permission to use this command."
   sound: ENTITY_VILLAGER_NO
 
 config_reloaded:
   message: "&#4A90E2CelesCombat configuration successfully reloaded."
-  sound: BLOCK_NOTE_BLOCK_PLING
+  sound: ENTITY_PLAYER_LEVELUP
