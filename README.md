@@ -52,7 +52,20 @@ combat:
     - "tpahere"
     - "afk"
     - "spawn"
-    # And many more preconfigured commands...
+    - "tpaccept"
+    - "tpacancel"
+    - "rtp"
+    - "warp"
+    - "warp spawn"
+    - "warp shop"
+    - "warp worlds"
+    - "warp crates"
+    - "warp afk"
+    - "warp auction"
+    - "enderchest"
+    - "ec"
+    - "vanish"
+    - "v"
 
 # Combat logout punishment effects
 logout_effects:
@@ -75,6 +88,12 @@ kill_rewards:
   enabled: true
   commands:
     - "donutcratecore shards give %killer% 10"
+  cooldown:
+    # Number of days before a player can receive rewards for killing the same player again
+    # Set to 0 to disable cooldown
+    days: 1
+    # Whether to notify players when they kill someone on cooldown
+    notify: true
 ```
 
 ## 🔨 **Commands**
