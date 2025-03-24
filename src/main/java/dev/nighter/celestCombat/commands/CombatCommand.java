@@ -1,6 +1,6 @@
-package dev.nighter.celesCombat.commands;
+package dev.nighter.celestCombat.commands;
 
-import dev.nighter.celesCombat.CelesCombat;
+import dev.nighter.celestCombat.CelestCombat;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class CombatCommand implements CommandExecutor, TabCompleter {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -28,8 +28,8 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[0].toLowerCase().equals("reload")) {
-            if (!sender.hasPermission("celescombat.command.reload")) {
-                placeholders.put("permission", "celescombat.command.reload");
+            if (!sender.hasPermission("celestcombat.command.reload")) {
+                placeholders.put("permission", "celestcombat.command.reload");
                 plugin.getMessageService().sendMessage(sender, "no_permission", placeholders);
                 return true;
             }
@@ -48,10 +48,10 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelpMessage(CommandSender sender) {
-        sender.sendMessage("§6CelesCombat Commands:");
+        sender.sendMessage("§6CelestCombat Commands:");
 
-        if (sender.hasPermission("celescombat.command.reload")) {
-            sender.sendMessage("§e/combat reload §7- Reload the configuration");
+        if (sender.hasPermission("celestcombat.command.reload")) {
+            sender.sendMessage("§e/celestcombat reload §7- Reload the configuration");
         }
     }
 
@@ -60,7 +60,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            if (sender.hasPermission("celescombat.command.reload")) {
+            if (sender.hasPermission("celestcombat.command.reload")) {
                 if ("reload".toLowerCase().startsWith(args[0].toLowerCase())) {
                     completions.add("reload");
                 }

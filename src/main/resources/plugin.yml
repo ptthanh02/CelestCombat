@@ -1,6 +1,6 @@
-name: CelesCombat
+name: CelestCombat
 version: '${version}'
-main: dev.nighter.celesCombat.CelesCombat
+main: dev.nighter.celestCombat.CelestCombat
 api-version: '1.21'
 authors: [ Nighter ]
 description: A simple combat logging plugin
@@ -10,15 +10,15 @@ soft-depend:
   - WorldGuard
 
 commands:
-  celescombat:
-    description: Main command for CelesCombat
-    usage: /celescombat
+  celestcombat:
+    description: Main command for CelestCombat
+    usage: /celestcombat
     aliases: [cc, combatlog]
 
 permissions:
-  celescombat.bypass.commands:
+  celestcombat.bypass.commands:
     description: Allows players to use commands while in combat
     default: op
-  celescombat.command.reload:
+  celestcombat.command.reload:
     description: Allows players to reload the plugin configuration
     default: op

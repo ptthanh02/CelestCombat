@@ -1,6 +1,6 @@
-package dev.nighter.celesCombat.language;
+package dev.nighter.celestCombat.language;
 
-import dev.nighter.celesCombat.CelesCombat;
+import dev.nighter.celestCombat.CelestCombat;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -16,7 +16,7 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class GuiService {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     private final LanguageManager languageManager;
 
     public Inventory createInventory(Player player, String titleKey, int size) {

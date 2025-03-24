@@ -1,4 +1,4 @@
-prefix: "&8[&#4A90E2CelesCombat&8] "
+prefix: "&8[&#4A90E2CelestCombat&8] "
 
 # ------------------------------------------------------
 # Combat messages
@@ -29,6 +29,10 @@ kill_reward_received:
   action_bar: "&#A303F9+★10 &7được cho vì đã giết %victim%"
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
+kill_reward_on_cooldown:
+  message: "&#E67E22Bạn vừa hạ gục %victim%! &#BF3A49Hãy chờ &#FFFFFF%days% ngày &#BF3A49để nhận phần thưởng tiếp theo."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
@@ -48,5 +52,5 @@ no_permission:
   sound: ENTITY_VILLAGER_NO
 
 config_reloaded:
-  message: "&#4A90E2Cấu hình CelesCombat đã được tải lại thành công."
+  message: "&#4A90E2Cấu hình CelestCombat đã được tải lại thành công."
   sound: ENTITY_PLAYER_LEVELUP

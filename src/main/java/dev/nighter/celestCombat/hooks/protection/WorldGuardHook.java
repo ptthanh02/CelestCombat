@@ -1,4 +1,4 @@
-package dev.nighter.celesCombat.hooks.protection;
+package dev.nighter.celestCombat.hooks.protection;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -8,8 +8,8 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
-import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.combat.CombatManager;
+import dev.nighter.celestCombat.CelestCombat;
+import dev.nighter.celestCombat.combat.CombatManager;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,7 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class WorldGuardHook implements Listener {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     private final CombatManager combatManager;
     private final Map<UUID, Long> lastMessageTime = new HashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
@@ -35,7 +35,7 @@ public class WorldGuardHook implements Listener {
     private final long CACHE_EXPIRY = TimeUnit.SECONDS.toMillis(30); // 30 seconds cache TTL
     private long lastCacheCleanup = System.currentTimeMillis();
 
-    public WorldGuardHook(CelesCombat plugin, CombatManager combatManager) {
+    public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
         this.combatManager = combatManager;
 
@@ -45,7 +45,7 @@ public class WorldGuardHook implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
-        if (!CelesCombat.hasWorldGuard) {
+        if (!CelestCombat.hasWorldGuard) {
             return;
         }
 

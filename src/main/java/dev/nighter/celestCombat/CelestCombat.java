@@ -1,21 +1,21 @@
-package dev.nighter.celesCombat;
+package dev.nighter.celestCombat;
 
 import com.sk89q.worldguard.WorldGuard;
-import dev.nighter.celesCombat.combat.CombatManager;
-import dev.nighter.celesCombat.commands.CombatCommand;
-import dev.nighter.celesCombat.language.LanguageManager;
-import dev.nighter.celesCombat.language.GuiService;
-import dev.nighter.celesCombat.language.MessageService;
-import dev.nighter.celesCombat.listeners.CombatListeners;
-import dev.nighter.celesCombat.listeners.EnderPearlListener;
-import dev.nighter.celesCombat.hooks.protection.WorldGuardHook;
+import dev.nighter.celestCombat.combat.CombatManager;
+import dev.nighter.celestCombat.commands.CombatCommand;
+import dev.nighter.celestCombat.language.LanguageManager;
+import dev.nighter.celestCombat.language.GuiService;
+import dev.nighter.celestCombat.language.MessageService;
+import dev.nighter.celestCombat.listeners.CombatListeners;
+import dev.nighter.celestCombat.listeners.EnderPearlListener;
+import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import lombok.Getter;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class CelesCombat extends JavaPlugin {
-    @Getter private static CelesCombat instance;
+public final class CelestCombat extends JavaPlugin {
+    @Getter private static CelestCombat instance;
     @Getter private LanguageManager languageManager;
     @Getter private MessageService messageService;
     @Getter private GuiService guiService;
@@ -57,13 +57,13 @@ public final class CelesCombat extends JavaPlugin {
 
         // Register commands
         CombatCommand combatCommand = new CombatCommand(this);
-        PluginCommand command = getCommand("celescombat");
+        PluginCommand command = getCommand("celestcombat");
         if (command != null) {
             command.setExecutor(combatCommand);
             command.setTabCompleter(combatCommand);
         }
 
-        getLogger().info("CelesCombat has been enabled!");
+        getLogger().info("CelestCombat has been enabled!");
     }
 
     @Override
@@ -73,7 +73,7 @@ public final class CelesCombat extends JavaPlugin {
             combatManager.shutdown();
         }
 
-        getLogger().info("CelesCombat has been disabled!");
+        getLogger().info("CelestCombat has been disabled!");
     }
 
     private void checkProtectionPlugins() {

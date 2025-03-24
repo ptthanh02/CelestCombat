@@ -1,10 +1,10 @@
-# 🌟 **CelesCombat**
+# 🌟 **CelestCombat**
 
 A robust combat logging prevention plugin designed for the **CelestinalSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
 
 ## 📖 **Overview**
 
-**CelesCombat** prevents combat logging by automatically tagging players during PvP encounters. If a tagged player attempts to disconnect, they will be automatically killed—ensuring fair gameplay and maintaining server integrity.
+**CelestCombat** prevents combat logging by automatically tagging players during PvP encounters. If a tagged player attempts to disconnect, they will be automatically killed—ensuring fair gameplay and maintaining server integrity.
 
 ## ✨ **Key Features**
 
@@ -26,7 +26,7 @@ A robust combat logging prevention plugin designed for the **CelestinalSMP** ser
 
 ## 🚀 **Installation**
 
-1. Download the latest **CelesCombat** plugin JAR file
+1. Download the latest **CelestCombat** plugin JAR file
 2. Place the JAR in your server's `plugins` folder
 3. Restart your server or load the plugin using a plugin manager
 4. The plugin will generate a default `config.yml` file
@@ -34,7 +34,7 @@ A robust combat logging prevention plugin designed for the **CelestinalSMP** ser
 
 ## ⚙️ **Configuration**
 
-CelesCombat offers extensive configuration options through its `config.yml` file:
+CelestCombat offers extensive configuration options through its `config.yml` file:
 
 ```yaml
 # Language settings (en_US, vi_VN)
@@ -79,17 +79,17 @@ kill_rewards:
 
 ## 🔨 **Commands**
 
-| Command | Description |
-|---------|-------------|
-| `/celescombat`, `/cc`, `/combatlog` | Main plugin command |
-| `/celescombat reload` | Reloads the plugin configuration |
+| Command                              | Description |
+|--------------------------------------|-------------|
+| `/celestcombat`, `/cc`, `/combatlog` | Main plugin command |
+| `/celestcombat reload`               | Reloads the plugin configuration |
 
 ## 🔑 **Permissions**
 
-| Permission | Description | Default |
-|------------|-------------|---------|
-| `celescombat.bypass.commands` | Allows using commands during combat | `op` |
-| `celescombat.command.reload` | Allows reloading plugin configuration | `op` |
+| Permission                     | Description | Default |
+|--------------------------------|-------------|---------|
+| `celestcombat.bypass.commands` | Allows using commands during combat | `op` |
+| `celestcombat.command.reload`  | Allows reloading plugin configuration | `op` |
 
 ## 💬 **Support & Community**
 

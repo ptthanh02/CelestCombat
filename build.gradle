@@ -58,7 +58,7 @@ processResources {
 }
 
 jar {
-    archiveBaseName.set("CelesCombat")
+    archiveBaseName.set("CelestCombat")
     archiveVersion.set("${version}")
 
 

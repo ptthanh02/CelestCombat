@@ -1,4 +1,4 @@
-prefix: "&8[&#4A90E2CelesCombat&8] "
+prefix: "&8[&#4A90E2CelestCombat&8] "
 
 # ------------------------------------------------------
 # Combat messages
@@ -29,6 +29,10 @@ kill_reward_received:
   action_bar: "&#A303F9+★10 &7for killing %victim%"
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
+kill_reward_on_cooldown:
+  message: "&#E67E22You recently killed %victim%! &#BF3A49Wait &#FFFFFF%days% days &#BF3A49for the next reward."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
@@ -48,5 +52,5 @@ no_permission:
   sound: ENTITY_VILLAGER_NO
 
 config_reloaded:
-  message: "&#4A90E2CelesCombat configuration successfully reloaded."
+  message: "&#4A90E2CelestCombat configuration successfully reloaded."
   sound: ENTITY_PLAYER_LEVELUP

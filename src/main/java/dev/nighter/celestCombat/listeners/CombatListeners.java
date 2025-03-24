@@ -1,7 +1,7 @@
-package dev.nighter.celesCombat.listeners;
+package dev.nighter.celestCombat.listeners;
 
-import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.combat.CombatManager;
+import dev.nighter.celestCombat.CelestCombat;
+import dev.nighter.celestCombat.combat.CombatManager;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class CombatListeners implements Listener {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     private final CombatManager combatManager;
     private final Map<UUID, Boolean> playerLoggedOutInCombat = new ConcurrentHashMap<>();
 
@@ -111,6 +111,20 @@ public class CombatListeners implements Listener {
             return;
         }
 
+        // Check if on cooldown
+        if (combatManager.isKillRewardOnCooldown(killer, victim)) {
+            // If on cooldown, either skip silently or notify the killer
+            if (plugin.getConfig().getBoolean("kill_rewards.cooldown.notify", true)) {
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("killer", killer.getName());
+                placeholders.put("victim", victim.getName());
+                placeholders.put("days", String.valueOf(combatManager.getRemainingKillRewardCooldown(killer, victim)));
+                plugin.getMessageService().sendMessage(killer, "kill_reward_on_cooldown", placeholders);
+            }
+            return;
+        }
+
+        // Execute reward commands
         List<String> commands = plugin.getConfig().getStringList("kill_rewards.commands");
         for (String command : commands) {
             // Replace placeholders in command
@@ -131,7 +145,10 @@ public class CombatListeners implements Listener {
             }
         }
 
-        // Optional: Notify the killer about rewards
+        // Set the cooldown after giving rewards
+        combatManager.setKillRewardCooldown(killer, victim);
+
+        // Notify the killer about rewards
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("killer", killer.getName());
         placeholders.put("victim", victim.getName());
@@ -143,7 +160,7 @@ public class CombatListeners implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
 
-        if (combatManager.isInCombat(player) && !player.hasPermission("celescombat.bypass.commands")) {
+        if (combatManager.isInCombat(player) && !player.hasPermission("celestcombat.bypass.commands")) {
             String command = event.getMessage().split(" ")[0].toLowerCase().substring(1);
             List<String> blockedCommands = plugin.getConfig().getStringList("combat.blocked_commands");
 

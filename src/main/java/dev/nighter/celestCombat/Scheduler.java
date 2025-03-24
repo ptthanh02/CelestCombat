@@ -1,4 +1,4 @@
-package dev.nighter.celesCombat;
+package dev.nighter.celestCombat;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -24,7 +24,7 @@ public final class Scheduler {
     private static final boolean isFolia;
 
     static {
-        plugin = CelesCombat.getInstance();
+        plugin = CelestCombat.getInstance();
 
         // Check if we're running on Folia
         boolean foliaDetected = false;

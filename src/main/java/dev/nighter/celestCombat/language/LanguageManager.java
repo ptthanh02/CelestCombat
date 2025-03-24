@@ -1,6 +1,6 @@
-package dev.nighter.celesCombat.language;
+package dev.nighter.celestCombat.language;
 
-import dev.nighter.celesCombat.CelesCombat;
+import dev.nighter.celestCombat.CelestCombat;
 import lombok.Getter;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.logging.Level;
 
 public class LanguageManager {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     @Getter private String defaultLocale;
     private final Map<String, LocaleData> localeMap = new HashMap<>();
     private final Set<String> activeLocales = new HashSet<>();
@@ -36,14 +36,14 @@ public class LanguageManager {
 
     }
 
-    public LanguageManager(CelesCombat plugin) {
+    public LanguageManager(CelestCombat plugin) {
         this.plugin = plugin;
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
         loadLanguages();
         saveDefaultFiles();
     }
 
-    public LanguageManager(CelesCombat plugin, LanguageFileType... fileTypes) {
+    public LanguageManager(CelestCombat plugin, LanguageFileType... fileTypes) {
         this.plugin = plugin;
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
         loadLanguages(fileTypes);

@@ -1,6 +1,6 @@
-package dev.nighter.celesCombat.language;
+package dev.nighter.celestCombat.language;
 
-import dev.nighter.celesCombat.CelesCombat;
+import dev.nighter.celestCombat.CelestCombat;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class MessageService {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     private final LanguageManager languageManager;
 
     public void sendMessage(CommandSender sender, String key) {

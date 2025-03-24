@@ -1,7 +1,7 @@
-package dev.nighter.celesCombat.listeners;
+package dev.nighter.celestCombat.listeners;
 
-import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.combat.CombatManager;
+import dev.nighter.celestCombat.CelestCombat;
+import dev.nighter.celestCombat.combat.CombatManager;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Material;
 import org.bukkit.entity.EnderPearl;
@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class EnderPearlListener implements Listener {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     private final CombatManager combatManager;
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

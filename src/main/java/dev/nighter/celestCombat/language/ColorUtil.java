@@ -1,4 +1,4 @@
-package dev.nighter.celesCombat.language;
+package dev.nighter.celestCombat.language;
 
 import org.bukkit.ChatColor;
 

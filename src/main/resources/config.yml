@@ -49,3 +49,9 @@ kill_rewards:
   enabled: true
   commands:
     - "donutcratecore shards give %killer% 10"
+  cooldown:
+    # Number of days before a player can receive rewards for killing the same player again
+    # Set to 0 to disable cooldown
+    days: 1
+    # Whether to notify players when they kill someone on cooldown
+    notify: true

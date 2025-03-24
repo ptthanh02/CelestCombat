@@ -1,7 +1,7 @@
-package dev.nighter.celesCombat.combat;
+package dev.nighter.celestCombat.combat;
 
-import dev.nighter.celesCombat.CelesCombat;
-import dev.nighter.celesCombat.Scheduler;
+import dev.nighter.celestCombat.CelestCombat;
+import dev.nighter.celestCombat.Scheduler;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -14,16 +14,16 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CombatManager {
-    private final CelesCombat plugin;
+    private final CelestCombat plugin;
     @Getter private final Map<UUID, Long> playersInCombat;
     private final Map<UUID, Scheduler.Task> combatTasks;
     private final Map<UUID, Scheduler.Task> countdownTasks;
     private final Map<UUID, UUID> combatOpponents;
 
-    // Ender pearl cooldown map
     @Getter private final Map<UUID, Long> enderPearlCooldowns;
+    @Getter private final Map<String, Long> killRewardCooldowns = new ConcurrentHashMap<>();
 
-    public CombatManager(CelesCombat plugin) {
+    public CombatManager(CelestCombat plugin) {
         this.plugin = plugin;
         this.playersInCombat = new ConcurrentHashMap<>();
         this.combatTasks = new ConcurrentHashMap<>();
@@ -250,6 +250,55 @@ public class CombatManager {
         long currentTime = System.currentTimeMillis();
 
         return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
+    }
+
+    public void setKillRewardCooldown(Player killer, Player victim) {
+        if (killer == null || victim == null) return;
+
+        // Skip if cooldowns are disabled
+        int cooldownDays = plugin.getConfig().getInt("kill_rewards.cooldown.days", 0);
+        if (cooldownDays <= 0) return;
+
+        // Create a unique key for this killer-victim pair
+        String key = killer.getUniqueId() + ":" + victim.getUniqueId();
+
+        // Calculate expiration time (current time + cooldown in milliseconds)
+        long expirationTime = System.currentTimeMillis() + (cooldownDays * 24L * 60L * 60L * 1000L);
+        killRewardCooldowns.put(key, expirationTime);
+    }
+
+    public boolean isKillRewardOnCooldown(Player killer, Player victim) {
+        if (killer == null || victim == null) return false;
+
+        // If cooldowns are disabled in config, always return false
+        int cooldownDays = plugin.getConfig().getInt("kill_rewards.cooldown.days", 0);
+        if (cooldownDays <= 0) return false;
+
+        // Create the unique key for this killer-victim pair
+        String key = killer.getUniqueId() + ":" + victim.getUniqueId();
+
+        if (!killRewardCooldowns.containsKey(key)) {
+            return false;
+        }
+
+        long cooldownEndTime = killRewardCooldowns.get(key);
+        if (System.currentTimeMillis() > cooldownEndTime) {
+            killRewardCooldowns.remove(key);
+            return false;
+        }
+
+        return true;
+    }
+
+    public long getRemainingKillRewardCooldown(Player killer, Player victim) {
+        if (killer == null || victim == null || !isKillRewardOnCooldown(killer, victim)) return 0;
+
+        String key = killer.getUniqueId() + ":" + victim.getUniqueId();
+        long endTime = killRewardCooldowns.get(key);
+        long currentTime = System.currentTimeMillis();
+
+        // Return remaining time in days
+        return (long) Math.ceil(Math.max(0, (endTime - currentTime) / (24.0 * 60.0 * 60.0 * 1000.0)));
     }
 
     public void shutdown() {
