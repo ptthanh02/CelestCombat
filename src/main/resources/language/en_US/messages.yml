@@ -16,13 +16,18 @@ command_blocked_in_combat:
   message: "&#E67E22You cannot use /%command% while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
   sound: BLOCK_ANVIL_LAND
 
+combat_expired:
+  enabled: true
+  message: "&aYou are no longer in combat."
+  sound: ENTITY_EXPERIENCE_ORB_PICKUP
+
 enderpearl_cooldown:
-  action_bar: "&#E67E22You must wait %time%s before using an ender pearl again."
+  action_bar: "&#E94E77Ender Pearl cooldown: &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 kill_reward_received:
-  action_bar: "&#A303F9+★10 &7vì đã hạ gục %victim%"
-  sound: ENTITY_PLAYER_LEVELUP
+  action_bar: "&#A303F9+★10 &7for killing %victim%"
+  sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins

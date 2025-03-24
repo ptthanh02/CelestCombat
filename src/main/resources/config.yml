@@ -8,6 +8,7 @@ combat:
 
   # Commands that are blocked during combat
   blocked_commands:
+    - "logout"
     - "tpa"
     - "tpahere"
     - "afk"

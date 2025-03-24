@@ -118,11 +118,17 @@ public class CombatListeners implements Listener {
                     .replace("%killer%", killer.getName())
                     .replace("%victim%", victim.getName());
 
-            // Execute the command as the console
-            plugin.getServer().dispatchCommand(
-                    plugin.getServer().getConsoleSender(),
-                    finalCommand
-            );
+            // Execute the command as the console with try-catch to handle potential errors
+            try {
+                plugin.getServer().dispatchCommand(
+                        plugin.getServer().getConsoleSender(),
+                        finalCommand
+                );
+            } catch (Exception e) {
+                // Log the error
+                plugin.getLogger().warning("Failed to execute kill reward command: " + finalCommand);
+                plugin.getLogger().warning("Error: " + e.getMessage());
+            }
         }
 
         // Optional: Notify the killer about rewards

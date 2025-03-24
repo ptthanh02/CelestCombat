@@ -115,7 +115,6 @@ public class CombatManager {
         player.setHealth(0);
         applyLogoutEffects(player.getLocation());
         removeFromCombat(player);
-        player.spigot().respawn();
     }
 
     private void applyLogoutEffects(Location location) {
@@ -156,6 +155,11 @@ public class CombatManager {
         Scheduler.Task countdownTask = countdownTasks.remove(playerUUID);
         if (countdownTask != null) {
             countdownTask.cancel();
+        }
+
+        // Send appropriate message if player was in combat
+        if (player.isOnline()) {
+            plugin.getMessageService().sendMessage(player, "combat_expired");
         }
     }
 
