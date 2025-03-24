@@ -51,7 +51,6 @@ public final class CelestCombat extends JavaPlugin {
 
         // Register WorldGuard hook if available
         if (hasWorldGuard) {
-            getLogger().info(""+hasWorldGuard);
             getServer().getPluginManager().registerEvents(new WorldGuardHook(this, combatManager), this);
         }
 
