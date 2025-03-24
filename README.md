@@ -1,50 +1,43 @@
 # 🌟 **CelesCombat**
 
-A robust combat logging plugin designed for the **CelestinalSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
-
----
+A robust combat logging prevention plugin designed for the **CelestinalSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
 
 ## 📖 **Overview**
 
-**CelesCombat** is a powerful Minecraft plugin that prevents combat logging, ensuring fair PvP encounters. When a player tries to disconnect during combat, the plugin will automatically kill them—promoting fairness and maintaining server integrity.
+**CelesCombat** prevents combat logging by automatically tagging players during PvP encounters. If a tagged player attempts to disconnect, they will be automatically killed—ensuring fair gameplay and maintaining server integrity.
 
----
+## ✨ **Key Features**
 
-## ✨ **Features**
-
-✅ **Combat Tagging System**: Players are tagged during combat for a configurable duration.  
-✅ **Logout Punishment**: Automatically kill players who disconnect while combat-tagged.  
-✅ **Command Blocking**: Restricts key commands like teleportation during active combat.  
-✅ **Visual Effects**: Configurable lightning strikes and immersive sounds when a player logs out.  
-✅ **Comprehensive Permissions**: Fine-tune who can bypass combat restrictions.  
-✅ **Folia Support**: Fully compatible with **Folia** for optimized server performance.  
-✅ **Multi-Platform**: Works seamlessly across **Bukkit**, **Spigot**, and **Paper**.
-
----
+- ⚔️ **Advanced Combat Tagging**: Players are tagged during combat for a configurable duration
+- ⚡ **Effective Logout Punishment**: Automatically kills players who disconnect while combat-tagged
+- 🛑 **Smart Command Blocking**: Prevents use of escape commands like teleportation during active combat
+- 🎯 **Ender Pearl Cooldown**: Configure special cooldowns for ender pearls during combat
+- 🏆 **Kill Rewards System**: Automatically reward players for successful PvP kills
+- ✨ **Visual & Audio Effects**: Configurable lightning strikes and immersive sounds when players combat log
+- 🔧 **Extensive Permissions**: Fine-tune who can bypass combat restrictions
+- 🚀 **Multi-Platform Support**: Works seamlessly across **Bukkit**, **Spigot**, and **Paper**
+- 🌿 **Folia Compatibility**: Fully optimized for **Folia** servers
 
 ## 📋 **Technical Requirements**
 
-- **Minecraft**: Supports **1.21 - 1.21.4**.
-- **Java**: Requires **Java 21** or higher.
-- **Platforms**: Bukkit, Spigot, Paper, and Folia compatible.
-
----
+- **Minecraft**: Supports versions **1.21 - 1.21.4**
+- **Java**: Requires **Java 21** or higher
+- **Server Platforms**: Compatible with Bukkit, Spigot, Paper, and Folia
 
 ## 🚀 **Installation**
 
-1. Download the **CelesCombat** plugin JAR file.
-2. Place the JAR in your server's `plugins` folder.
-3. Restart your server or load the plugin using a plugin manager.
-4. Customize settings by editing the `config.yml` file.
-
----
+1. Download the latest **CelesCombat** plugin JAR file
+2. Place the JAR in your server's `plugins` folder
+3. Restart your server or load the plugin using a plugin manager
+4. The plugin will generate a default `config.yml` file
+5. Customize settings to match your server's needs
 
 ## ⚙️ **Configuration**
 
-The plugin generates a `config.yml` file with customizable options:
+CelesCombat offers extensive configuration options through its `config.yml` file:
 
 ```yaml
-# Language settings
+# Language settings (en_US, vi_VN)
 language: en_US
 
 # Combat settings
@@ -54,62 +47,52 @@ combat:
 
   # Commands that are blocked during combat
   blocked_commands:
-    - "rtp"
-    - "tp"
-    - "teleport"
-    - "spawn"
-    - "home"
+    - "logout"
     - "tpa"
     - "tpahere"
-    - "tpaccept"
-    - "warp"
-    - "enderchest"
-    - "ec"
-    - "vanish"
-    - "v"
+    - "afk"
+    - "spawn"
+    # And many more preconfigured commands...
 
 # Combat logout punishment effects
 logout_effects:
   # Strike lightning at player location (visual only)
   lightning: true
 
-  # Sound effects (e.g., ENTITY_LIGHTNING_BOLT_THUNDER, ENTITY_GENERIC_EXPLODE)
+  # Common sounds: ENTITY_LIGHTNING_BOLT_THUNDER, ENTITY_GENERIC_EXPLODE,
+  # ENTITY_WITHER_DEATH, ENTITY_ENDER_DRAGON_GROWL
+  # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
-```
 
----
+# Ender pearl cooldown (while in combat)
+enderpearl_cooldown:
+  enabled: true
+  # Ender pearl cooldown duration in seconds
+  duration: 10
+
+# Combat kill rewards
+kill_rewards:
+  enabled: true
+  commands:
+    - "donutcratecore shards give %killer% 10"
+```
 
 ## 🔨 **Commands**
 
-| Command                  | Description                      |
-|--------------------------|----------------------------------|
-| `/celescombat` `/cc` `/combatlog` | Main plugin command.            |
-| `/celescombat reload`    | Reloads the plugin configuration. |
-
----
+| Command | Description |
+|---------|-------------|
+| `/celescombat`, `/cc`, `/combatlog` | Main plugin command |
+| `/celescombat reload` | Reloads the plugin configuration |
 
 ## 🔑 **Permissions**
 
-| Permission                        | Description                                      | Default |
-|-----------------------------------|--------------------------------------------------|---------|
-| `celescombat.bypass.commands`     | Allows players to use commands during combat.    | `op`   |
-| `celescombat.command.reload`      | Allows players to reload the plugin configuration.| `op`   |
+| Permission | Description | Default |
+|------------|-------------|---------|
+| `celescombat.bypass.commands` | Allows using commands during combat | `op` |
+| `celescombat.command.reload` | Allows reloading plugin configuration | `op` |
+
+## 💬 **Support & Community**
+
+- **GitHub Issues**: Report bugs or suggest features on our repository
 
 ---
-
-## 📅 **Future Plans**
-
-CelesCombat will soon be available on **Modrinth** and **Spigot** with enhanced features and additional improvements.
-
----
-
-## 💬 **Support**
-
-For issues, suggestions, or contributions, please reach out via the project's repository.
-
----
-
-## 💙 **About**
-
-CelesCombat is proudly developed for the CelestinalSMP server by Nighter.
-
