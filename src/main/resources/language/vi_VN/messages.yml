@@ -8,40 +8,44 @@ combat_countdown:
 
 player_died_combat_logout:
   message: "&#E94E77Bạn đã thoát khi đang trong combat và bị phạt."
-  title: "&#D83A56HÌNH PHẠT CHIẾN ĐẤU"
+  title: "&#E94E77HÌNH PHẠT CHIẾN ĐẤU"
   subtitle: "&#BF3A49Đừng thoát khi đang chiến đấu!"
   sound: ENTITY_WITHER_HURT
 
 command_blocked_in_combat:
-  message: "&#E67E22Bạn không thể sử dụng lệnh /%command% khi đang trong combat! &#BF3A49Chờ &#FFFFFF%time%s &#BF3A49cho đến khi kết thúc."
+  message: "&#E94E77Bạn không thể sử dụng lệnh /%command% khi đang trong combat! &#F39C12Chờ &#FFFFFF%time%s &#F39C12cho đến khi kết thúc."
   sound: BLOCK_ANVIL_LAND
 
 combat_expired:
   enabled: true
-  message: "&aBạn không còn trong combat."
+  message: "&#4CAF50Bạn không còn trong combat."
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
   action_bar: "&#E94E77Ngọc Ender đang hồi: &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
+item_use_blocked_in_combat:
+  message: "&#E94E77Bạn không thể sử dụng %item% khi đang trong combat! &#F39C12Chờ &#FFFFFF%time%s &#F39C12cho đến khi kết thúc."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
 kill_reward_received:
-  action_bar: "&#A303F9+★10 &7được cho vì đã giết %victim%"
-  sound: ENTITY_EXPERIENCE_ORB_PICKUP
+  action_bar: "&#8A2BE2+★10 &#FFFFFFđược cho vì đã giết %victim%"
+  sound: ENTITY_PLAYER_LEVELUP
 
 kill_reward_on_cooldown:
-  message: "&#E67E22Bạn vừa hạ gục %victim%! &#BF3A49Hãy chờ &#FFFFFF%days% ngày &#BF3A49để nhận phần thưởng tiếp theo."
+  message: "&#F39C12Bạn vừa hạ gục %victim%! &#E94E77Hãy chờ &#FFFFFF%days% ngày &#E94E77để nhận phần thưởng tiếp theo."
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
-combat_no_pearl_safezone:
-  action_bar: "&#E67E22Không thể dùng ender pearl vào khu an toàn! &#BF3A49Chờ &#FFFFFF%time%s"
+combat_no_safezone_entry:
+  message: "&#E94E77Không thể vào khu an toàn khi đang combat! &#F39C12Vui lòng chờ &#FFFFFF%time% &#F39C12giây."
   sound: BLOCK_NOTE_BLOCK_PLING
 
-combat_no_command_teleport:
-  action_bar: "&#E67E22Không thể dịch chuyển khi đang combat! &#BF3A49Chờ &#FFFFFF%time%s"
+combat_no_pearl_safezone:
+  message: "&#E94E77Không thể dùng ender pearl vào khu an toàn khi đang combat!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------

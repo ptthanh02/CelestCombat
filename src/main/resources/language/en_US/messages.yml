@@ -8,40 +8,44 @@ combat_countdown:
 
 player_died_combat_logout:
   message: "&#E94E77You previously logged out during combat and have been penalized."
-  title: "&#D83A56COMBAT PENALTY"
+  title: "&#E94E77COMBAT PENALTY"
   subtitle: "&#BF3A49Don't log out during fights!"
   sound: ENTITY_WITHER_HURT
 
 command_blocked_in_combat:
-  message: "&#E67E22You cannot use /%command% while in combat! &#BF3A49Wait &#FFFFFF%time%s &#BF3A49until combat ends."
+  message: "&#E94E77You cannot use /%command% while in combat! &#F39C12Wait &#FFFFFF%time%s &#F39C12until combat ends."
   sound: BLOCK_ANVIL_LAND
 
 combat_expired:
   enabled: true
-  message: "&aYou are no longer in combat."
+  message: "&#4CAF50You are no longer in combat."
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
   action_bar: "&#E94E77Ender Pearl cooldown: &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
+item_use_blocked_in_combat:
+  message: "&#E94E77You cannot use %item% while in combat! &#F39C12Wait &#FFFFFF%time%s &#F39C12until combat ends."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
 kill_reward_received:
-  action_bar: "&#A303F9+★10 &7for killing %victim%"
-  sound: ENTITY_EXPERIENCE_ORB_PICKUP
+  action_bar: "&#8A2BE2+★10 &#FFFFFFfor killing %victim%"
+  sound: ENTITY_PLAYER_LEVELUP
 
 kill_reward_on_cooldown:
-  message: "&#E67E22You recently killed %victim%! &#BF3A49Wait &#FFFFFF%days% days &#BF3A49for the next reward."
+  message: "&#F39C12You recently killed %victim%! &#E94E77Wait &#FFFFFF%days% days &#E94E77for the next reward."
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
-combat_no_pearl_safezone:
-  action_bar: "&#E67E22Can't pearl in safe zone! &#BF3A49Wait &#FFFFFF%time%s"
+combat_no_safezone_entry:
+  message: "&#E94E77Can't enter safe zone in combat! &#F39C12Please wait &#FFFFFF%time% &#F39C12seconds."
   sound: BLOCK_NOTE_BLOCK_PLING
 
-combat_no_command_teleport:
-  action_bar: "&#E67E22Can't teleport in combat! &#BF3A49Wait &#FFFFFF%time%s"
+combat_no_pearl_safezone:
+  message: "&#E94E77Can't pearl into safe zone! &#F39C12Please wait &#FFFFFF%time% &#F39C12seconds."
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------

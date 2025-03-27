@@ -9,6 +9,7 @@ import dev.nighter.celestCombat.language.MessageService;
 import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
+import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
 import lombok.Getter;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
@@ -20,6 +21,7 @@ public final class CelestCombat extends JavaPlugin {
     @Getter private MessageService messageService;
     @Getter private GuiService guiService;
     @Getter private CombatManager combatManager;
+    @Getter private WorldGuardHook worldGuardHook;
 
     // WorldGuard support
     public static boolean hasWorldGuard = false;
@@ -48,9 +50,11 @@ public final class CelestCombat extends JavaPlugin {
         // Register listeners
         getServer().getPluginManager().registerEvents(new CombatListeners(this, combatManager), this);
         getServer().getPluginManager().registerEvents(new EnderPearlListener(this, combatManager), this);
+        getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
         // Register WorldGuard hook if available
         if (hasWorldGuard) {
+            worldGuardHook = new WorldGuardHook(this, combatManager);
             getServer().getPluginManager().registerEvents(new WorldGuardHook(this, combatManager), this);
         }
 

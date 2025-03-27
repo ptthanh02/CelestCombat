@@ -23,10 +23,16 @@ combat:
     - "warp crates"
     - "warp afk"
     - "warp auction"
+    - "home"
+    - "team home"
     - "enderchest"
     - "ec"
     - "vanish"
     - "v"
+
+  disabled_items:
+    - CHORUS_FRUIT
+    - ELYTRA
 
 # Combat logout punishment effects
 logout_effects:
@@ -55,3 +61,9 @@ kill_rewards:
     days: 1
     # Whether to notify players when they kill someone on cooldown
     notify: true
+
+# Config barrier for WorldGuard no-pvp region
+safezone_barrier:
+  duration: 5          # How long the barrier stays in seconds
+  height: 4            # How tall the barrier is
+  width: 5             # How wide the barrier is
