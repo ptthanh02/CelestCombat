@@ -1,6 +1,7 @@
 package dev.nighter.celestCombat;
 
 import com.sk89q.worldguard.WorldGuard;
+import dev.nighter.celestCombat.bstats.Metrics;
 import dev.nighter.celestCombat.combat.CombatManager;
 import dev.nighter.celestCombat.combat.DeathAnimationManager;
 import dev.nighter.celestCombat.commands.CombatCommand;
@@ -11,7 +12,9 @@ import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
+import dev.nighter.celestCombat.updates.UpdateChecker;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,6 +23,7 @@ public final class CelestCombat extends JavaPlugin {
     @Getter private static CelestCombat instance;
     @Getter private LanguageManager languageManager;
     @Getter private MessageService messageService;
+    @Getter private UpdateChecker updateChecker;
     @Getter private GuiService guiService;
     @Getter private CombatManager combatManager;
     @Getter private DeathAnimationManager deathAnimationManager;
@@ -30,6 +34,7 @@ public final class CelestCombat extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        long startTime = System.currentTimeMillis();
         instance = this;
 
         // Save default config
@@ -45,6 +50,7 @@ public final class CelestCombat extends JavaPlugin {
         // Initialize services
         messageService = new MessageService(this, languageManager);
         guiService = new GuiService(this, languageManager);
+        updateChecker = new UpdateChecker(this);
 
         // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);
@@ -69,7 +75,12 @@ public final class CelestCombat extends JavaPlugin {
             command.setTabCompleter(combatCommand);
         }
 
-        getLogger().info("CelestCombat has been enabled!");
+        // Setup bStats metrics
+        setupBtatsMetrics();
+
+        // Plugin startup message
+        long loadTime = System.currentTimeMillis() - startTime;
+        getLogger().info("CelestCombat has been enabled! (Loaded in " + loadTime + "ms)");
     }
 
     @Override
@@ -102,5 +113,13 @@ public final class CelestCombat extends JavaPlugin {
         } catch (ClassNotFoundException | NoClassDefFoundError e) {
             return false;
         }
+    }
+
+    private void setupBtatsMetrics() {
+        Scheduler.runTask(() -> {
+            Metrics metrics = new Metrics(this, 25281);
+            metrics.addCustomChart(new Metrics.SimplePie("players",
+                    () -> String.valueOf(Bukkit.getOnlinePlayers().size())));
+        });
     }
 }

@@ -22,3 +22,6 @@ permissions:
   celestcombat.command.tag:
     description: Allows players to manually tag players in combat
     default: op
+  celestcombat.update.notify:
+    description: Allows players to receive update notifications
+    default: op
