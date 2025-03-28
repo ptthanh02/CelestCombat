@@ -14,14 +14,16 @@ import dev.nighter.celestCombat.combat.CombatManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -48,6 +50,11 @@ public class WorldGuardHook implements Listener {
     private final int BARRIER_HEIGHT;
     private final int BARRIER_WIDTH;
     private final Map<UUID, SafezoneApproachTracker> safezoneApproachTrackers = new ConcurrentHashMap<>();
+
+    // Track ender pearls from combat players
+    private final Map<UUID, UUID> combatPlayerPearls = new ConcurrentHashMap<>();
+    // Track player locations when they throw ender pearls
+    private final Map<UUID, Location> pearlThrowLocations = new ConcurrentHashMap<>();
 
     private static class SafezoneApproachTracker {
         private int consecutiveAttempts = 0;
@@ -88,54 +95,94 @@ public class WorldGuardHook implements Listener {
         Scheduler.runTaskTimer(this::cleanupCache, 1200L, 1200L); // Run every minute (20 ticks/sec * 60)
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        if (!CelestCombat.hasWorldGuard) {
+    /**
+     * Track ender pearls thrown by players in combat
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        Projectile projectile = event.getEntity();
+
+        // Only interested in ender pearls
+        if (!(projectile instanceof EnderPearl)) {
             return;
         }
 
-        Player player = event.getPlayer();
+        // Check if the shooter is a player in combat
+        ProjectileSource source = projectile.getShooter();
+        if (!(source instanceof Player)) {
+            return;
+        }
 
-        // Check if player is in combat
-        if (!combatManager.isInCombat(player)) return;
+        Player player = (Player) source;
 
-        // Check if player is right-clicking with an Ender Pearl
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        // Track pearls from players in combat
+        if (combatManager.isInCombat(player)) {
+            // Store projectile ID with player ID
+            combatPlayerPearls.put(projectile.getUniqueId(), player.getUniqueId());
 
-        ItemStack itemInHand = event.getItem();
-        if (itemInHand == null || itemInHand.getType() != Material.ENDER_PEARL) return;
-
-        // Calculate predicted Ender Pearl landing location
-        Location currentLocation = player.getLocation();
-        Location predictedLocation = calculatePredictedLocation(player);
-
-        // Check if predicted location is a safezone
-        if (isSafeZone(predictedLocation)) {
-            // Cancel the event
-            event.setCancelled(true);
-
-            // Send cooldown-protected message
-            Map<String, String> placeholders = new HashMap<>();
-            placeholders.put("player", player.getName());
-            placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
-            plugin.getMessageService().sendMessage(player, "combat_no_pearl_safezone", placeholders);
+            // Store the player's location when they throw the pearl
+            pearlThrowLocations.put(player.getUniqueId(), player.getLocation().clone());
         }
     }
 
     /**
-     * Calculates the predicted location of an Ender Pearl based on player's view direction
+     * Prevent ender pearls from landing in safezones if thrown by players in combat
      */
-    private Location calculatePredictedLocation(Player player) {
-        // Ender Pearl typical travel distance is around 20 blocks
-        final double ENDER_PEARL_DISTANCE = 20.0;
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onProjectileHit(ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
 
-        // Get player's view direction
-        Vector direction = player.getLocation().getDirection().normalize();
+        // Only interested in ender pearls
+        if (!(projectile instanceof EnderPearl)) {
+            return;
+        }
 
-        // Calculate predicted location
-        Location predictedLocation = player.getLocation().clone().add(direction.multiply(ENDER_PEARL_DISTANCE));
+        // Check if this is a pearl we're tracking (from combat player)
+        UUID projectileId = projectile.getUniqueId();
+        if (!combatPlayerPearls.containsKey(projectileId)) {
+            return;
+        }
 
-        return predictedLocation;
+        // Get the location where the pearl landed
+        Location landingLocation = projectile.getLocation();
+
+        // Get the player who threw the pearl
+        UUID playerUUID = combatPlayerPearls.get(projectileId);
+        Player player = plugin.getServer().getPlayer(playerUUID);
+
+        // Clean up tracking for this projectile
+        combatPlayerPearls.remove(projectileId);
+
+        // Check if landing location is in a safezone
+        if (isSafeZone(landingLocation)) {
+            // Cancel the teleportation event
+            event.setCancelled(true);
+
+            // Check if player is online and get their saved location
+            if (player != null && player.isOnline() && pearlThrowLocations.containsKey(playerUUID)) {
+                Location originalLocation = pearlThrowLocations.get(playerUUID);
+
+                // Delay the teleport to ensure it happens after the pearl event is processed
+                Scheduler.runTaskLater(() -> {
+                    player.teleportAsync(originalLocation).thenAccept(success -> {
+                        plugin.getLogger().info("Teleported player back to original location: " + success);
+                        if (success) {
+                            sendCooldownMessage(player, "combat_no_pearl_safezone");
+                        }
+                    });
+                }, 1L); // Just a 1 tick delay, but enough to ensure proper order
+            }
+            // If no location saved but player is online, just send message
+            else if (player != null && player.isOnline()) {
+                sendCooldownMessage(player, "combat_no_pearl_safezone");
+            }
+
+            // Remove the saved location
+            pearlThrowLocations.remove(playerUUID);
+        } else {
+            // Pearl landed in a valid location, clean up tracking
+            pearlThrowLocations.remove(playerUUID);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

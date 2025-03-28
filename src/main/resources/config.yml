@@ -30,9 +30,17 @@ combat:
     - "vanish"
     - "v"
 
+  # Items that are blocked during combat
+  # Available items: Foods, Potions and Elytra
   disabled_items:
     - CHORUS_FRUIT
     - ELYTRA
+
+# Ender pearl cooldown (while in combat)
+enderpearl_cooldown:
+  enabled: true
+  # Ender pearl cooldown duration in seconds
+  duration: 10
 
 # Combat logout punishment effects
 logout_effects:
@@ -44,11 +52,15 @@ logout_effects:
   # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
-# Ender pearl cooldown (while in combat)
-enderpearl_cooldown:
+death_animation:
   enabled: true
-  # Ender pearl cooldown duration in seconds
-  duration: 10
+  # Only play death animation for player kills
+  only_player_kill: true
+  # Enable/disable each
+  # If multiple are enabled, random one will play each time
+  animation:
+    lightning: true
+    fire_particles: false
 
 # Combat kill rewards
 kill_rewards:

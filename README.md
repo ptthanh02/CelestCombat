@@ -107,7 +107,6 @@ kill_rewards:
 
 | Permission                     | Description | Default |
 |--------------------------------|-------------|---------|
-| `celestcombat.bypass.commands` | Allows using commands during combat | `op` |
 | `celestcombat.command.reload`  | Allows reloading plugin configuration | `op` |
 
 ## 💬 **Support & Community**

@@ -16,9 +16,9 @@ commands:
     aliases: [cc, combatlog]
 
 permissions:
-  celestcombat.bypass.commands:
-    description: Allows players to use commands while in combat
-    default: op
   celestcombat.command.reload:
     description: Allows players to reload the plugin configuration
+    default: op
+  celestcombat.command.tag:
+    description: Allows players to manually tag players in combat
     default: op

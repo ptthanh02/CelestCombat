@@ -100,10 +100,17 @@ public class CombatListeners implements Listener {
             // Execute kill reward commands
             giveKillRewards(killer, victim);
 
+            // Perform death animation
+            plugin.getDeathAnimationManager().performDeathAnimation(victim, killer);
+            combatManager.removeFromCombat(victim);
+
             // Remove from combat
             combatManager.removeFromCombat(killer);
+        } else {
+            // Perform death animation
+            plugin.getDeathAnimationManager().performDeathAnimation(victim, null);
+            combatManager.removeFromCombat(victim);
         }
-        combatManager.removeFromCombat(victim);
     }
 
     private void giveKillRewards(Player killer, Player victim) {
@@ -160,7 +167,7 @@ public class CombatListeners implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
 
-        if (combatManager.isInCombat(player) && !player.hasPermission("celestcombat.bypass.commands")) {
+        if (combatManager.isInCombat(player)) {
             String command = event.getMessage().split(" ")[0].toLowerCase().substring(1);
             List<String> blockedCommands = plugin.getConfig().getStringList("combat.blocked_commands");
 

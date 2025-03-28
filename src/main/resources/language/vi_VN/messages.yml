@@ -58,3 +58,15 @@ no_permission:
 config_reloaded:
   message: "&#4A90E2Cấu hình CelestCombat đã được tải lại thành công."
   sound: ENTITY_PLAYER_LEVELUP
+
+combat_tag_success:
+  message: "&#4CAF50Đã đánh dấu %player1% và %player2% trong combat."
+  sound: ENTITY_EXPERIENCE_ORB_PICKUP
+
+combat_tag_single_success:
+  message: "&#4CAF50Đã đánh dấu %player% trong combat."
+  sound: ENTITY_EXPERIENCE_ORB_PICKUP
+
+player_not_found:
+  message: "&#E94E77Không tìm thấy người chơi."
+  sound: ENTITY_VILLAGER_NO

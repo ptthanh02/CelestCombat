@@ -2,6 +2,7 @@ package dev.nighter.celestCombat;
 
 import com.sk89q.worldguard.WorldGuard;
 import dev.nighter.celestCombat.combat.CombatManager;
+import dev.nighter.celestCombat.combat.DeathAnimationManager;
 import dev.nighter.celestCombat.commands.CombatCommand;
 import dev.nighter.celestCombat.language.LanguageManager;
 import dev.nighter.celestCombat.language.GuiService;
@@ -21,6 +22,7 @@ public final class CelestCombat extends JavaPlugin {
     @Getter private MessageService messageService;
     @Getter private GuiService guiService;
     @Getter private CombatManager combatManager;
+    @Getter private DeathAnimationManager deathAnimationManager;
     @Getter private WorldGuardHook worldGuardHook;
 
     // WorldGuard support
@@ -45,6 +47,7 @@ public final class CelestCombat extends JavaPlugin {
         guiService = new GuiService(this, languageManager);
 
         // Initialize combat manager
+        deathAnimationManager = new DeathAnimationManager(this);
         combatManager = new CombatManager(this);
 
         // Register listeners
