@@ -95,9 +95,6 @@ public class WorldGuardHook implements Listener {
         Scheduler.runTaskTimer(this::cleanupCache, 1200L, 1200L); // Run every minute (20 ticks/sec * 60)
     }
 
-    /**
-     * Track ender pearls thrown by players in combat
-     */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onProjectileLaunch(ProjectileLaunchEvent event) {
         Projectile projectile = event.getEntity();
@@ -125,9 +122,6 @@ public class WorldGuardHook implements Listener {
         }
     }
 
-    /**
-     * Prevent ender pearls from landing in safezones if thrown by players in combat
-     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
         Projectile projectile = event.getEntity();
@@ -143,9 +137,6 @@ public class WorldGuardHook implements Listener {
             return;
         }
 
-        // Get the location where the pearl landed
-        Location landingLocation = projectile.getLocation();
-
         // Get the player who threw the pearl
         UUID playerUUID = combatPlayerPearls.get(projectileId);
         Player player = plugin.getServer().getPlayer(playerUUID);
@@ -153,8 +144,32 @@ public class WorldGuardHook implements Listener {
         // Clean up tracking for this projectile
         combatPlayerPearls.remove(projectileId);
 
-        // Check if landing location is in a safezone
-        if (isSafeZone(landingLocation)) {
+        // Check pearl destination by using the future teleport location
+        // This handles pearls that hit objects above ground level
+        Location teleportDestination = null;
+
+        // If hit block, calculate where player would land
+        if (event.getHitBlock() != null) {
+            Block hitPosition = event.getHitBlock();
+            teleportDestination = new Location(
+                    projectile.getWorld(),
+                    hitPosition.getX(),
+                    hitPosition.getY(),
+                    hitPosition.getZ()
+            );
+
+            // Adjust to where player would stand (account for hitting ceiling/wall)
+            if (event.getHitBlockFace() != null) {
+                teleportDestination.add(event.getHitBlockFace().getDirection().multiply(0.5));
+            }
+        }
+        // If hit entity or other, just use pearl location
+        else {
+            teleportDestination = projectile.getLocation();
+        }
+
+        // Check if teleport destination is in a safezone
+        if (isSafeZone(teleportDestination)) {
             // Cancel the teleportation event
             event.setCancelled(true);
 
@@ -165,9 +180,20 @@ public class WorldGuardHook implements Listener {
                 // Delay the teleport to ensure it happens after the pearl event is processed
                 Scheduler.runTaskLater(() -> {
                     player.teleportAsync(originalLocation).thenAccept(success -> {
-                        plugin.getLogger().info("Teleported player back to original location: " + success);
                         if (success) {
                             sendCooldownMessage(player, "combat_no_pearl_safezone");
+                        } else {
+                            // If teleport fails, try to find a safe location
+                            Location safeLocation = findSafeLocation(originalLocation);
+                            if (safeLocation != null) {
+                                player.teleportAsync(safeLocation);
+                                sendCooldownMessage(player, "combat_no_pearl_safezone");
+                            } else {
+                                // Last resort - kill the player
+                                player.setHealth(0);
+                                plugin.getLogger().warning("Killed player " + player.getName() + " as no safe location could be found");
+                                sendCooldownMessage(player, "combat_killed_no_safe_location");
+                            }
                         }
                     });
                 }, 1L); // Just a 1 tick delay, but enough to ensure proper order
@@ -176,13 +202,10 @@ public class WorldGuardHook implements Listener {
             else if (player != null && player.isOnline()) {
                 sendCooldownMessage(player, "combat_no_pearl_safezone");
             }
-
-            // Remove the saved location
-            pearlThrowLocations.remove(playerUUID);
-        } else {
-            // Pearl landed in a valid location, clean up tracking
-            pearlThrowLocations.remove(playerUUID);
         }
+
+        // Always clean up the saved location
+        pearlThrowLocations.remove(playerUUID);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -226,10 +249,19 @@ public class WorldGuardHook implements Listener {
                 Location forceBackLocation = getForcedBackLocation(event.getFrom(), to);
 
                 // Teleport player far back
-                player.teleportAsync(forceBackLocation);
-
-                // Send warning message
-                sendCooldownMessage(player, "combat_multiple_safezone_attempts");
+                player.teleportAsync(forceBackLocation).thenAccept(success -> {
+                    if (!success) {
+                        // Try to find a safe location
+                        Location safeLocation = findSafeLocation(event.getFrom());
+                        if (safeLocation != null) {
+                            player.teleportAsync(safeLocation);
+                        } else {
+                            // Last resort - kill the player
+                            player.setHealth(0);
+                            sendCooldownMessage(player, "killed_trying_to_enter_safezone_combat");
+                        }
+                    }
+                });
 
                 // Reset the tracker
                 tracker.reset();
@@ -249,9 +281,6 @@ public class WorldGuardHook implements Listener {
         }
     }
 
-    /**
-     * Calculates a location to force the player back if they repeatedly try to enter a safezone
-     */
     private Location getForcedBackLocation(Location from, Location currentTo) {
         // Calculate a direction away from the safezone
         Vector direction = from.toVector().subtract(currentTo.toVector()).normalize();
@@ -264,27 +293,72 @@ public class WorldGuardHook implements Listener {
         return safeLocation != null ? safeLocation : from;
     }
 
-    /**
-     * Finds a safe location to teleport the player to
-     */
     private Location findSafeLocation(Location location) {
-        // Check 10 blocks up and down for a safe spot
-        for (int y = -5; y <= 5; y++) {
-            Location checkLoc = location.clone().add(0, y, 0);
-            Block feet = checkLoc.getBlock();
-            Block head = checkLoc.clone().add(0, 1, 0).getBlock();
+        if (location == null) return null;
 
-            // Check if the location is safe (air blocks at feet and head level)
-            if (feet.getType() == Material.AIR && head.getType() == Material.AIR) {
-                return checkLoc;
+        // Create a wider search pattern in all directions
+        // Search in a 10x10x10 cube around the player's location
+        int searchRadius = 10;
+
+        // Try the original location first
+        if (isLocationSafe(location)) {
+            return location;
+        }
+
+        // Try locations directly above and below first (most common solutions)
+        for (int y = 1; y <= searchRadius; y++) {
+            // Check above
+            Location above = location.clone().add(0, y, 0);
+            if (isLocationSafe(above)) {
+                return above;
+            }
+
+            // Check below
+            Location below = location.clone().add(0, -y, 0);
+            if (isLocationSafe(below)) {
+                return below;
             }
         }
+
+        // Expand search in a spiral pattern
+        for (int distance = 1; distance <= searchRadius; distance++) {
+            // Check in all directions at this distance
+            for (int x = -distance; x <= distance; x++) {
+                for (int z = -distance; z <= distance; z++) {
+                    // Skip middle area as we've already checked it
+                    if (Math.abs(x) < distance && Math.abs(z) < distance) continue;
+
+                    // Check at different y levels
+                    for (int y = -distance; y <= distance; y++) {
+                        Location checkLoc = location.clone().add(x, y, z);
+                        if (isLocationSafe(checkLoc)) {
+                            return checkLoc;
+                        }
+                    }
+                }
+            }
+        }
+
+        // No safe location found
         return null;
     }
 
-    /**
-     * Checks if a player is approaching a safezone
-     */
+    private boolean isLocationSafe(Location location) {
+        if (location == null) return false;
+
+        // Check if location is in a safezone
+        if (isSafeZone(location)) return false;
+
+        Block feet = location.getBlock();
+        Block head = location.clone().add(0, 1, 0).getBlock();
+        Block ground = location.clone().add(0, -1, 0).getBlock();
+
+        // Location is safe if feet and head are air, and ground is solid
+        return (feet.getType() == Material.AIR || !feet.getType().isSolid())
+                && (head.getType() == Material.AIR || !head.getType().isSolid())
+                && ground.getType().isSolid();
+    }
+
     private boolean isApproachingSafeZone(Player player, Location location) {
         // Check if the location they're moving to is a safezone
         if (isSafeZone(location)) {
@@ -298,9 +372,6 @@ public class WorldGuardHook implements Listener {
         return isSafeZone(checkAhead);
     }
 
-    /**
-     * Creates a temporary barrier of red glass panes to prevent entry
-     */
     private void createBarrier(Player player, Location location) {
         UUID playerUUID = player.getUniqueId();
 
@@ -360,9 +431,6 @@ public class WorldGuardHook implements Listener {
         }, BARRIER_DURATION_TICKS);
     }
 
-    /**
-     * Removes a specific barrier for a player
-     */
     private void removeBarrier(UUID playerUUID, Set<Location> barrierBlocks) {
         // Remove each block in the barrier
         for (Location loc : barrierBlocks) {
@@ -383,9 +451,6 @@ public class WorldGuardHook implements Listener {
         }
     }
 
-    /**
-     * Finds the direction vector pointing toward the nearest safezone
-     */
     private Vector findSafezoneDirection(Player player, Location currentLocation) {
         // Check in 8 directions around the player to find the closest safezone
         Vector[] directions = {
@@ -414,11 +479,6 @@ public class WorldGuardHook implements Listener {
         return null;
     }
 
-    /**
-     * Determines if a location is in a safe zone (a region where PvP is disabled)
-     * @param location The location to check
-     * @return true if the location is in a region AND PvP is disabled there
-     */
     private boolean isSafeZone(Location location) {
         return isInAnyRegion(location) && !isPvPAllowed(location);
     }
@@ -510,9 +570,6 @@ public class WorldGuardHook implements Listener {
         }
     }
 
-    /**
-     * Removes all active barriers for a player (use when they leave combat)
-     */
     public void removeAllBarriers(Player player) {
         UUID playerUUID = player.getUniqueId();
         if (activeBarriers.containsKey(playerUUID)) {
@@ -527,7 +584,6 @@ public class WorldGuardHook implements Listener {
         }
     }
 
-    // Class for caching location's PvP status by chunk
     private static class ChunkCoordinate {
         private final String world;
         private final int chunkX;

@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,6 +21,7 @@ public class LanguageManager {
     @Getter private String defaultLocale;
     private final Map<String, LocaleData> localeMap = new HashMap<>();
     private final Set<String> activeLocales = new HashSet<>();
+    private final Set<LanguageFileType> activeFileTypes = new HashSet<>();
 
     // Enum to represent the different language file types
     @Getter
@@ -33,12 +35,12 @@ public class LanguageManager {
         LanguageFileType(String fileName) {
             this.fileName = fileName;
         }
-
     }
 
     public LanguageManager(CelestCombat plugin) {
         this.plugin = plugin;
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
+        activeFileTypes.addAll(Arrays.asList(LanguageFileType.values()));
         loadLanguages();
         saveDefaultFiles();
     }
@@ -46,6 +48,7 @@ public class LanguageManager {
     public LanguageManager(CelestCombat plugin, LanguageFileType... fileTypes) {
         this.plugin = plugin;
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
+        activeFileTypes.addAll(Arrays.asList(fileTypes));
         loadLanguages(fileTypes);
         saveDefaultFiles();
     }
@@ -63,7 +66,7 @@ public class LanguageManager {
     }
 
     public void loadLanguages() {
-        loadLanguages(LanguageFileType.values());
+        loadLanguages(activeFileTypes.toArray(new LanguageFileType[0]));
     }
 
     public void loadLanguages(LanguageFileType... fileTypes) {
@@ -95,13 +98,13 @@ public class LanguageManager {
         // Update the default locale from config when reloading
         this.defaultLocale = plugin.getConfig().getString("language", "en_US");
 
-        // Reload default locale
-        loadLocale(defaultLocale, LanguageFileType.values());
+        // Reload default locale with only the active file types
+        loadLocale(defaultLocale, activeFileTypes.toArray(new LanguageFileType[0]));
 
-        // Only reload active locales
+        // Only reload active locales with active file types
         for (String locale : activeLocales) {
             if (!locale.equals(defaultLocale)) {
-                loadLocale(locale, LanguageFileType.values());
+                loadLocale(locale, activeFileTypes.toArray(new LanguageFileType[0]));
             }
         }
 
@@ -151,53 +154,66 @@ public class LanguageManager {
         YamlConfiguration defaultConfig = new YamlConfiguration();
         YamlConfiguration userConfig = new YamlConfiguration();
 
-        // Load default configuration from resources
-        try (InputStream inputStream = plugin.getResource("language/" + defaultLocale + "/" + fileName)) {
-            if (inputStream != null) {
-                defaultConfig.loadFromString(new String(inputStream.readAllBytes()));
-            }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load default " + fileName, e);
-        }
+        // Check if the default resource exists before trying to load it
+        boolean defaultResourceExists = plugin.getResource("language/" + defaultLocale + "/" + fileName) != null;
 
-        // Create file if it doesn't exist
-        if (!file.exists()) {
+        // Load default configuration from resources if it exists
+        if (defaultResourceExists) {
             try (InputStream inputStream = plugin.getResource("language/" + defaultLocale + "/" + fileName)) {
                 if (inputStream != null) {
+                    defaultConfig.loadFromString(new String(inputStream.readAllBytes()));
+                }
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to load default " + fileName, e);
+            }
+        }
+
+        // Create file if it doesn't exist and the default resource exists
+        if (!file.exists() && defaultResourceExists) {
+            try (InputStream inputStream = plugin.getResource("language/" + defaultLocale + "/" + fileName)) {
+                if (inputStream != null) {
+                    file.getParentFile().mkdirs(); // Ensure parent directory exists
                     Files.copy(inputStream, file.toPath());
                 }
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to create " + fileName + " for locale " + locale, e);
+                return new YamlConfiguration(); // Return empty config to avoid further errors
             }
         }
 
-        // Load user configuration
-        try {
-            userConfig.load(file);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load " + fileName + " for locale " + locale, e);
-        }
-
-        // Merge configurations (add missing keys from default to user config)
-        boolean updated = false;
-        for (String key : defaultConfig.getKeys(true)) {
-            if (!userConfig.contains(key)) {
-                userConfig.set(key, defaultConfig.get(key));
-                updated = true;
-            }
-        }
-
-        // Save if updated
-        if (updated) {
+        // Load user configuration if file exists
+        if (file.exists()) {
             try {
-                userConfig.save(file);
-                plugin.getLogger().info("Updated " + fileName + " for locale " + locale);
-            } catch (IOException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to save updated " + fileName + " for locale " + locale, e);
+                userConfig.load(file);
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to load " + fileName + " for locale " + locale + ". Using defaults.", e);
+                return defaultConfig; // Return default config if user config can't be loaded
             }
-        }
 
-        return userConfig;
+            // Merge configurations (add missing keys from default to user config)
+            boolean updated = false;
+            for (String key : defaultConfig.getKeys(true)) {
+                if (!userConfig.contains(key)) {
+                    userConfig.set(key, defaultConfig.get(key));
+                    updated = true;
+                }
+            }
+
+            // Save if updated
+            if (updated) {
+                try {
+                    userConfig.save(file);
+                    plugin.getLogger().info("Updated " + fileName + " for locale " + locale);
+                } catch (IOException e) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to save updated " + fileName + " for locale " + locale, e);
+                }
+            }
+
+            return userConfig;
+        } else {
+            // If file doesn't exist and we couldn't create it, return empty config
+            return new YamlConfiguration();
+        }
     }
 
     public String getMessage(String key, String locale, Map<String, String> placeholders) {
@@ -273,7 +289,7 @@ public class LanguageManager {
 
     public String getGuiTitle(String key, String locale, Map<String, String> placeholders) {
         trackLocaleUsage(locale);
-        if (!isGuiElementEnabled(key, locale)) {
+        if (!activeFileTypes.contains(LanguageFileType.GUI) || !isGuiElementEnabled(key, locale)) {
             return null;
         }
 
@@ -295,7 +311,7 @@ public class LanguageManager {
 
     public String getGuiItemName(String key, String locale, Map<String, String> placeholders) {
         trackLocaleUsage(locale);
-        if (!isGuiElementEnabled(key, locale)) {
+        if (!activeFileTypes.contains(LanguageFileType.GUI) || !isGuiElementEnabled(key, locale)) {
             return null;
         }
 
@@ -317,7 +333,7 @@ public class LanguageManager {
 
     public String[] getGuiItemLore(String key, String locale, Map<String, String> placeholders) {
         trackLocaleUsage(locale);
-        if (!isGuiElementEnabled(key, locale)) {
+        if (!activeFileTypes.contains(LanguageFileType.GUI) || !isGuiElementEnabled(key, locale)) {
             return new String[0];
         }
 
@@ -337,7 +353,7 @@ public class LanguageManager {
 
     public String getGuiItemSound(String key, String locale) {
         trackLocaleUsage(locale);
-        if (!isGuiElementEnabled(key, locale)) {
+        if (!activeFileTypes.contains(LanguageFileType.GUI) || !isGuiElementEnabled(key, locale)) {
             return null;
         }
 
@@ -355,6 +371,21 @@ public class LanguageManager {
 
     public String formatNumber(double number, String locale) {
         trackLocaleUsage(locale);
+        if (!activeFileTypes.contains(LanguageFileType.FORMATTING)) {
+            // Return a default format if formatting file type is not active
+            if (number >= 1_000_000_000_000L) {
+                return Math.round(number / 1_000_000_000_000.0 * 10) / 10.0 + "T";
+            } else if (number >= 1_000_000_000L) {
+                return Math.round(number / 1_000_000_000.0 * 10) / 10.0 + "B";
+            } else if (number >= 1_000_000L) {
+                return Math.round(number / 1_000_000.0 * 10) / 10.0 + "M";
+            } else if (number >= 1_000L) {
+                return Math.round(number / 1_000.0 * 10) / 10.0 + "K";
+            } else {
+                return Math.round(number * 10) / 10.0 + "";
+            }
+        }
+
         LocaleData localeData = getLocaleData(locale);
         String format;
 

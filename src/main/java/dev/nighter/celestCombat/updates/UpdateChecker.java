@@ -109,8 +109,7 @@ public class UpdateChecker implements Listener {
     public CompletableFuture<Boolean> checkForUpdates() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String currentVersion = "0.0.0";
-
+                // String currentVersion = "0.0.0";
                 URL url = new URL("https://api.modrinth.com/v2/project/" + projectId + "/version");
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");

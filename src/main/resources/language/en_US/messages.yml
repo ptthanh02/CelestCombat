@@ -48,6 +48,12 @@ combat_no_pearl_safezone:
   message: "&#E94E77Can't pearl into safe zone! &#F39C12Please wait &#FFFFFF%time% &#F39C12seconds."
   sound: BLOCK_NOTE_BLOCK_PLING
 
+killed_trying_to_enter_safezone_combat:
+  message: "&#E94E77You were killed while trying to enter a safe zone in combat."
+  title: "&#E94E77COMBAT PENALTY"
+  subtitle: "&#BF3A49Don't go into safe zones during fights!"
+  sound: ENTITY_WITHER_HURT
+
 # ------------------------------------------------------
 # Plugin command messages
 # ------------------------------------------------------

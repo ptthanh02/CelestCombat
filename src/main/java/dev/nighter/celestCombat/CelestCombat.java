@@ -12,6 +12,7 @@ import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
+import dev.nighter.celestCombat.updates.ConfigUpdater;
 import dev.nighter.celestCombat.updates.UpdateChecker;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -24,6 +25,7 @@ public final class CelestCombat extends JavaPlugin {
     @Getter private LanguageManager languageManager;
     @Getter private MessageService messageService;
     @Getter private UpdateChecker updateChecker;
+    @Getter private ConfigUpdater configUpdater;
     @Getter private GuiService guiService;
     @Getter private CombatManager combatManager;
     @Getter private DeathAnimationManager deathAnimationManager;
@@ -51,6 +53,8 @@ public final class CelestCombat extends JavaPlugin {
         messageService = new MessageService(this, languageManager);
         guiService = new GuiService(this, languageManager);
         updateChecker = new UpdateChecker(this);
+        configUpdater = new ConfigUpdater(this);
+        configUpdater.checkAndUpdateConfig();
 
         // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);

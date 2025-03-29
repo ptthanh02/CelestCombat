@@ -1,5 +1,7 @@
 package dev.nighter.celestCombat.updates;
 
+import org.jetbrains.annotations.NotNull;
+
 public class Version implements Comparable<Version> {
     private final int[] parts;
     private static final int MAX_PARTS = 4; // Updated to support 4 parts
@@ -28,7 +30,7 @@ public class Version implements Comparable<Version> {
 
 
     @Override
-    public int compareTo(Version other) {
+    public int compareTo(@NotNull Version other) {
         // Compare all 4 parts
         for (int i = 0; i < MAX_PARTS; i++) {
             if (parts[i] != other.parts[i]) {
