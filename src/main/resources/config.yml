@@ -72,7 +72,7 @@ kill_rewards:
     # Set to 0 to disable cooldown
     days: 1
     # Whether to notify players when they kill someone on cooldown
-    notify: true
+    notify: false
 
 # Config barrier for WorldGuard no-pvp region
 safezone_barrier:

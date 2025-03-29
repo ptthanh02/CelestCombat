@@ -121,7 +121,7 @@ public class CombatListeners implements Listener {
         // Check if on cooldown
         if (combatManager.isKillRewardOnCooldown(killer, victim)) {
             // If on cooldown, either skip silently or notify the killer
-            if (plugin.getConfig().getBoolean("kill_rewards.cooldown.notify", true)) {
+            if (plugin.getConfig().getBoolean("kill_rewards.cooldown.notify", false)) {
                 Map<String, String> placeholders = new HashMap<>();
                 placeholders.put("killer", killer.getName());
                 placeholders.put("victim", victim.getName());
