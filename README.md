@@ -1,40 +1,96 @@
-# 🌟 **CelestCombat**
+# CelestCombat
 
-A robust combat logging prevention plugin designed for the **CelestinalSMP** server, compatible with **Minecraft versions 1.21 - 1.21.4**.
+[![Version](https://img.shields.io/badge/version-latest-blue.svg)](https://github.com/ptthanh02/CelestCombat)
+[![API](https://img.shields.io/badge/API-1.21-green.svg)](https://www.spigotmc.org/)
+[![Folia](https://img.shields.io/badge/Folia-supported-brightgreen.svg)](https://github.com/PaperMC/Folia)
 
-## 📖 **Overview**
+**CelestCombat** is a lightweight yet powerful combat management plugin mainly designed for SwordPvP, preventing combat logging and ensuring fair PvP battles on Minecraft servers.
 
-**CelestCombat** prevents combat logging by automatically tagging players during PvP encounters. If a tagged player attempts to disconnect, they will be automatically killed—ensuring fair gameplay and maintaining server integrity.
+## ✨ Features
 
-## ✨ **Key Features**
+### 🛡️ Core Combat System
+- **Combat Tagging**: Automatically tags players in combat for a configurable duration
+- **Command Blocking**: Prevents usage of teleportation and utility commands during combat
+- **Item Restrictions**: Disable specific items like Chorus Fruit and Elytra during combat
+- **Ender Pearl Cooldown**: Configure specific cooldowns for Ender Pearls during combat
 
-- ⚔️ **Advanced Combat Tagging**: Players are tagged during combat for a configurable duration
-- ⚡ **Effective Logout Punishment**: Automatically kills players who disconnect while combat-tagged
-- 🛑 **Smart Command Blocking**: Prevents use of escape commands like teleportation during active combat
-- 🎯 **Ender Pearl Cooldown**: Configure special cooldowns for ender pearls during combat
-- 🏆 **Kill Rewards System**: Automatically reward players for successful PvP kills
-- ✨ **Visual & Audio Effects**: Configurable lightning strikes and immersive sounds when players combat log
-- 🔧 **Extensive Permissions**: Fine-tune who can bypass combat restrictions
-- 🚀 **Multi-Platform Support**: Works seamlessly across **Bukkit**, **Spigot**, and **Paper**
-- 🌿 **Folia Compatibility**: Fully optimized for **Folia** servers
+<br>
+<div align="center">
+  <img src="https://cdn.modrinth.com/data/cached_images/dd288f9b5efd82a88605c4dd81ab18b06e032443.png" alt="Ender Pearl cooldown" width="750" />
 
-## 📋 **Technical Requirements**
+<strong>Ender Pearl cooldown during PvP.</strong>
+</div>
+<br>
 
-- **Minecraft**: Supports versions **1.21 - 1.21.4**
-- **Java**: Requires **Java 21** or higher
-- **Server Platforms**: Compatible with Bukkit, Spigot, Paper, and Folia
+### 💥 Visual Effects
+- **Death Animations**: Customizable lightning strikes and particle effects for player deaths
+- **Combat Logout Punishment**: Visual and sound effects when players log out during combat
+- **Combat Timers**: Clean action bar countdown display for remaining combat time
 
-## 🚀 **Installation**
+<br>
+<div align="center">
+  <img src="https://cdn.modrinth.com/data/cached_images/28626acdd4a6ad343b88e95983b691db74400e26.png" alt="In Combat" />
 
-1. Download the latest **CelestCombat** plugin JAR file
-2. Place the JAR in your server's `plugins` folder
-3. Restart your server or load the plugin using a plugin manager
-4. The plugin will generate a default `config.yml` file
-5. Customize settings to match your server's needs
+<strong>In Combat Indicator during PvP.</strong>
+</div>
+<br>
 
-## ⚙️ **Configuration**
+### 🌍 Safe Zone Protection (WorldGuard)
+- **WorldGuard Integration**: Prevents players from entering safe zones during combat
+- **Barrier System**: Visual and physical barriers to prevent safe zone abuse
+- **Anti-Exploit Measures**: Death penalties for attempting to escape into safe zones
 
-CelestCombat offers extensive configuration options through its `config.yml` file:
+<br>
+<div align="center">
+  <img src="https://cdn.modrinth.com/data/cached_images/62811f25f8b3d2f5056320b49819cfd733171cb0.png" alt="Safe Zone Barrier" width="750" />
+
+<strong>Safe Zone Barrier during PvP.</strong>
+</div>
+<br>
+
+### 🏆 Combat Rewards
+- **Kill Rewards**: Reward players with commands when they defeat opponents
+- **Cooldown System**: Prevent farming rewards from the same player with configurable cooldowns
+- **Customizable Messages**: Full control over all notifications and rewards
+
+### 🌐 Multilingual Support
+- Includes both English (en_US) and Vietnamese (vi_VN) language files
+- Easily add your own language translations
+
+### 🛠️ Administrative Tools
+- **Manual Combat Tagging**: Force players into combat with simple commands
+- **Reload Configuration**: Update settings without restarting your server
+- **Update Notifications**: Stay informed about new versions
+
+## 📋 Commands
+
+| Command | Aliases | Description | Permission |
+|---------|---------|-------------|------------|
+| `/celestcombat` | `/cc`, `/combatlog` | Shows plugin command help | None |
+| `/celestcombat reload` | `/cc reload` | Reloads the plugin configuration | `celestcombat.command.reload` |
+| `/celestcombat tag <player>` | `/cc tag <player>` | Tags a single player in combat | `celestcombat.command.tag` |
+| `/celestcombat tag <player1> <player2>` | `/cc tag <player1> <player2>` | Tags two players in mutual combat | `celestcombat.command.tag` |
+
+## 🔧 Permissions
+
+| Permission | Description | Default |
+|------------|-------------|---------|
+| `celestcombat.command.reload` | Allows reloading the plugin configuration | OP |
+| `celestcombat.command.tag` | Allows manual combat tagging of players | OP |
+| `celestcombat.update.notify` | Receive update notifications | OP |
+
+## ⚙️ Configuration
+
+CelestCombat offers extensive configuration options:
+
+- Combat duration and command blacklist
+- Customizable punishment effects and rewards
+- WorldGuard integration for safe zone protection
+- Fully customizable messages with RGB color support
+- Easy to understand YAML configuration files
+
+<details>
+<summary>📄 Click to view sample config.yml</summary>
 
 ```yaml
 # Language settings (en_US, vi_VN)
@@ -62,10 +118,24 @@ combat:
     - "warp crates"
     - "warp afk"
     - "warp auction"
+    - "home"
+    - "team home"
     - "enderchest"
     - "ec"
     - "vanish"
     - "v"
+
+  # Items that are blocked during combat
+  # Available items: Foods, Potions and Elytra
+  disabled_items:
+    - CHORUS_FRUIT
+    - ELYTRA
+
+# Ender pearl cooldown (while in combat)
+enderpearl_cooldown:
+  enabled: true
+  # Ender pearl cooldown duration in seconds
+  duration: 10
 
 # Combat logout punishment effects
 logout_effects:
@@ -77,11 +147,15 @@ logout_effects:
   # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
-# Ender pearl cooldown (while in combat)
-enderpearl_cooldown:
+death_animation:
   enabled: true
-  # Ender pearl cooldown duration in seconds
-  duration: 10
+  # Only play death animation for player kills
+  only_player_kill: true
+  # Enable/disable each
+  # If multiple are enabled, random one will play each time
+  animation:
+    lightning: true
+    fire_particles: false
 
 # Combat kill rewards
 kill_rewards:
@@ -93,24 +167,26 @@ kill_rewards:
     # Set to 0 to disable cooldown
     days: 1
     # Whether to notify players when they kill someone on cooldown
-    notify: true
+    notify: false
+
+# Config barrier for WorldGuard no-pvp region
+safezone_barrier:
+  duration: 5          # How long the barrier stays in seconds
+  height: 4            # How tall the barrier is
+  width: 5             # How wide the barrier is
 ```
+</details>
 
-## 🔨 **Commands**
+## 📦 Installation
 
-| Command                              | Description |
-|--------------------------------------|-------------|
-| `/celestcombat`, `/cc`, `/combatlog` | Main plugin command |
-| `/celestcombat reload`               | Reloads the plugin configuration |
+1. Download the latest version of CelestCombat
+2. Place the JAR file in your plugins folder
+3. Start or restart your server
+4. Edit the configuration files to your liking
+5. Use `/celestcombat reload` to apply changes
 
-## 🔑 **Permissions**
+## 💬 Support
 
-| Permission                     | Description | Default |
-|--------------------------------|-------------|---------|
-| `celestcombat.command.reload`  | Allows reloading plugin configuration | `op` |
-
-## 💬 **Support & Community**
-
-- **GitHub Issues**: Report bugs or suggest features on our repository
-
----
+Need help with CelestCombat?
+- [GitHub Issue](https://github.com/ptthanh02/CelestCombat/issues)
+- [Discord Support](https://discord.com/invite/FJN7hJKPyb)
