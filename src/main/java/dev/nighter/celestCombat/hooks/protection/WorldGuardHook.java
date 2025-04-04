@@ -46,7 +46,7 @@ public class WorldGuardHook implements Listener {
     private final Map<UUID, Set<Location>> activeBarriers = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastBarrierTime = new ConcurrentHashMap<>();
     private final long BARRIER_COOLDOWN = 2000; // 2 seconds cooldown between barriers
-    private final int BARRIER_DURATION_TICKS;
+    private final long BARRIER_DURATION_TICKS;
     private final int BARRIER_HEIGHT;
     private final int BARRIER_WIDTH;
     private final Map<UUID, SafezoneApproachTracker> safezoneApproachTrackers = new ConcurrentHashMap<>();
@@ -87,7 +87,7 @@ public class WorldGuardHook implements Listener {
         this.combatManager = combatManager;
 
         // Get barrier configuration
-        this.BARRIER_DURATION_TICKS = plugin.getConfig().getInt("safezone_barrier.duration", 5 * 20);
+        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "5s");
         this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 4);
         this.BARRIER_WIDTH = plugin.getConfig().getInt("safezone_barrier.width", 5);
 

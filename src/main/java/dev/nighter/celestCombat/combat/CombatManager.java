@@ -36,7 +36,8 @@ public class CombatManager {
         if (player == null || attacker == null) return;
 
         UUID playerUUID = player.getUniqueId();
-        int combatTime = plugin.getConfig().getInt("combat.duration", 20);
+        long combatTimeTicks = plugin.getTimeFromConfig("combat.duration", "20s"); // returns 400 ticks (20s)
+        long combatTimeSeconds = combatTimeTicks / 20; // Convert ticks to seconds for display
 
         boolean alreadyInCombatWithAttacker =
                 isInCombat(player) &&
@@ -44,7 +45,7 @@ public class CombatManager {
 
         if (alreadyInCombatWithAttacker) {
             long currentEndTime = playersInCombat.get(playerUUID);
-            long newEndTime = System.currentTimeMillis() + (combatTime * 1000L);
+            long newEndTime = System.currentTimeMillis() + (combatTimeSeconds * 1000L);
 
             if (newEndTime <= currentEndTime) {
                 return;
@@ -65,18 +66,18 @@ public class CombatManager {
             }
         }
 
-        playersInCombat.put(playerUUID, System.currentTimeMillis() + (combatTime * 1000L));
+        playersInCombat.put(playerUUID, System.currentTimeMillis() + (combatTimeSeconds * 1000L));
 
         // Use the entity's scheduler for player-specific tasks
         Scheduler.Task task = Scheduler.runEntityTaskLater(player, () -> {
             removeFromCombat(player);
-        }, combatTime * 20L);
+        }, combatTimeTicks); // Use the original ticks for scheduler
 
         combatTasks.put(playerUUID, task);
-        startCountdownTimer(player);
+        updateCountdownTimer(player);
     }
 
-    private void startCountdownTimer(Player player) {
+    private void updateCountdownTimer(Player player) {
         if (player == null) return;
 
         UUID playerUUID = player.getUniqueId();
@@ -87,17 +88,53 @@ public class CombatManager {
         }
 
         Scheduler.Task countdownTask = Scheduler.runEntityTaskTimer(player, () -> {
-            if (player.isOnline() && isInCombat(player)) {
-                int remainingTime = getRemainingCombatTime(player);
+            if (player.isOnline()) {
+                boolean inCombat = isInCombat(player);
+                boolean hasPearlCooldown = isEnderPearlOnCooldown(player);
 
-                // Only show countdown if time is > 0 to avoid showing 0
-                if (remainingTime > 0) {
-                    Map<String, String> placeholders = new HashMap<>();
-                    placeholders.put("player", player.getName());
-                    placeholders.put("time", String.valueOf(remainingTime));
-                    plugin.getMessageService().sendMessage(player, "combat_countdown", placeholders);
+                if (!inCombat && !hasPearlCooldown) {
+                    // If neither cooldown is active, cancel the task
+                    Scheduler.Task task = countdownTasks.get(playerUUID);
+                    if (task != null) {
+                        task.cancel();
+                        countdownTasks.remove(playerUUID);
+                    }
+                    return;
+                }
+
+                if (inCombat) {
+                    int remainingCombatTime = getRemainingCombatTime(player);
+
+                    if (hasPearlCooldown) {
+                        // Both cooldowns active - show combined message
+                        int remainingPearlTime = getRemainingEnderPearlCooldown(player);
+
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("player", player.getName());
+                        placeholders.put("combat_time", String.valueOf(remainingCombatTime));
+                        placeholders.put("pearl_time", String.valueOf(remainingPearlTime));
+                        plugin.getMessageService().sendMessage(player, "combat_pearl_countdown", placeholders);
+                    } else {
+                        // Only combat cooldown active
+                        if (remainingCombatTime > 0) {
+                            Map<String, String> placeholders = new HashMap<>();
+                            placeholders.put("player", player.getName());
+                            placeholders.put("time", String.valueOf(remainingCombatTime));
+                            plugin.getMessageService().sendMessage(player, "combat_countdown", placeholders);
+                        }
+                    }
+                } else if (hasPearlCooldown) {
+                    // Only pearl cooldown active
+                    int remainingPearlTime = getRemainingEnderPearlCooldown(player);
+                    if (remainingPearlTime > 0) {
+                        Map<String, String> placeholders = new HashMap<>();
+                        placeholders.put("player", player.getName());
+                        placeholders.put("time", String.valueOf(remainingPearlTime));
+                        plugin.getMessageService().sendMessage(player, "pearl_countdown", placeholders);
+                    }
                 }
             } else {
+                // Player offline, cancel task
                 Scheduler.Task task = countdownTasks.get(playerUUID);
                 if (task != null) {
                     task.cancel();
@@ -150,11 +187,6 @@ public class CombatManager {
         Scheduler.Task task = combatTasks.remove(playerUUID);
         if (task != null) {
             task.cancel();
-        }
-
-        Scheduler.Task countdownTask = countdownTasks.remove(playerUUID);
-        if (countdownTask != null) {
-            countdownTask.cancel();
         }
 
         // Send appropriate message if player was in combat
@@ -217,8 +249,19 @@ public class CombatManager {
             return;
         }
 
-        int cooldownTime = plugin.getConfig().getInt("enderpearl_cooldown.duration", 10);
-        enderPearlCooldowns.put(player.getUniqueId(), System.currentTimeMillis() + (cooldownTime * 1000L));
+        // Use getTimeFromConfig to get enderpearl cooldown in ticks
+        long cooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
+        long cooldownSeconds = cooldownTicks / 20; // Convert ticks to seconds for real-time tracking
+
+        enderPearlCooldowns.put(player.getUniqueId(), System.currentTimeMillis() + (cooldownSeconds * 1000L));
+
+        // Update the countdown timer to show both cooldowns if in combat
+        if (isInCombat(player)) {
+            updateCountdownTimer(player);
+        } else {
+            // Start a countdown timer just for pearl cooldown
+            updateCountdownTimer(player);
+        }
     }
 
     public boolean isEnderPearlOnCooldown(Player player) {
@@ -237,6 +280,13 @@ public class CombatManager {
         long cooldownEndTime = enderPearlCooldowns.get(playerUUID);
         if (System.currentTimeMillis() > cooldownEndTime) {
             enderPearlCooldowns.remove(playerUUID);
+
+            // If the pearl cooldown ended but player is still in combat,
+            // update the countdown to show only combat time
+            if (isInCombat(player)) {
+                updateCountdownTimer(player);
+            }
+
             return false;
         }
 
@@ -255,8 +305,12 @@ public class CombatManager {
     public void setKillRewardCooldown(Player killer, Player victim) {
         if (killer == null || victim == null) return;
 
-        // Skip if cooldowns are disabled
-        int cooldownDays = plugin.getConfig().getInt("kill_rewards.cooldown.days", 0);
+        // Use getTimeFromConfig for kill rewards cooldown (converting days to ticks)
+        long cooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
+        if (cooldownTicks <= 0) return;
+
+        // Convert ticks to days for real-time tracking
+        long cooldownDays = cooldownTicks / (20 * 60 * 60 * 24); // ticks to days (20 ticks/s * 60s/min * 60min/h * 24h/day)
         if (cooldownDays <= 0) return;
 
         // Create a unique key for this killer-victim pair
@@ -271,7 +325,8 @@ public class CombatManager {
         if (killer == null || victim == null) return false;
 
         // If cooldowns are disabled in config, always return false
-        int cooldownDays = plugin.getConfig().getInt("kill_rewards.cooldown.days", 0);
+        long cooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
+        long cooldownDays = cooldownTicks / (20 * 60 * 60 * 24); // Convert ticks to days
         if (cooldownDays <= 0) return false;
 
         // Create the unique key for this killer-victim pair

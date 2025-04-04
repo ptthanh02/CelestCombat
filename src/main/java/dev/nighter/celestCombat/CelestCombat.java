@@ -5,6 +5,7 @@ import dev.nighter.celestCombat.bstats.Metrics;
 import dev.nighter.celestCombat.combat.CombatManager;
 import dev.nighter.celestCombat.combat.DeathAnimationManager;
 import dev.nighter.celestCombat.commands.CombatCommand;
+import dev.nighter.celestCombat.configs.TimeFormatter;
 import dev.nighter.celestCombat.language.LanguageManager;
 import dev.nighter.celestCombat.language.GuiService;
 import dev.nighter.celestCombat.language.MessageService;
@@ -15,21 +16,26 @@ import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
 import dev.nighter.celestCombat.updates.ConfigUpdater;
 import dev.nighter.celestCombat.updates.UpdateChecker;
 import lombok.Getter;
+import lombok.experimental.Accessors;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+@Getter
+@Accessors(chain = false)
 public final class CelestCombat extends JavaPlugin {
-    @Getter private static CelestCombat instance;
-    @Getter private LanguageManager languageManager;
-    @Getter private MessageService messageService;
-    @Getter private UpdateChecker updateChecker;
-    @Getter private ConfigUpdater configUpdater;
-    @Getter private GuiService guiService;
-    @Getter private CombatManager combatManager;
-    @Getter private DeathAnimationManager deathAnimationManager;
-    @Getter private WorldGuardHook worldGuardHook;
+    @Getter
+    private static CelestCombat instance;
+    private LanguageManager languageManager;
+    private MessageService messageService;
+    private UpdateChecker updateChecker;
+    private ConfigUpdater configUpdater;
+    private TimeFormatter timeFormatter;
+    private GuiService guiService;
+    private CombatManager combatManager;
+    private DeathAnimationManager deathAnimationManager;
+    private WorldGuardHook worldGuardHook;
 
     // WorldGuard support
     public static boolean hasWorldGuard = false;
@@ -55,6 +61,7 @@ public final class CelestCombat extends JavaPlugin {
         updateChecker = new UpdateChecker(this);
         configUpdater = new ConfigUpdater(this);
         configUpdater.checkAndUpdateConfig();
+        timeFormatter = new TimeFormatter(this);
 
         // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);
@@ -125,5 +132,9 @@ public final class CelestCombat extends JavaPlugin {
             metrics.addCustomChart(new Metrics.SimplePie("players",
                     () -> String.valueOf(Bukkit.getOnlinePlayers().size())));
         });
+    }
+
+    public long getTimeFromConfig(String path, String defaultValue) {
+        return timeFormatter.getTimeFromConfig(path, defaultValue);
     }
 }

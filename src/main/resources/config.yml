@@ -1,10 +1,20 @@
-# Language settings (en_US, vi_VN)
-language: en_US
+#=============================================================
+#                     CELEST COMBAT
+#                      Configuration
+#=============================================================
+# Time Format: Use simple format like "20s" (20 seconds), "5m" (5 minutes), "1h" (1 hour)
+# Complex format also supported: "1d_2h_30m_15s" (1 day, 2 hours, 30 minutes, 15 seconds)
+# Units: s = seconds, m = minutes, h = hours, d = days, w = weeks, mo = months, y = years
 
-# Combat settings
+# Language settings
+language: en_US  # Available: en_US, vi_VN
+
+#---------------------------------------------------
+#              Core Combat Settings
+#---------------------------------------------------
 combat:
-  # Duration of combat tag in seconds
-  duration: 20
+  # Duration of combat tag
+  duration: 20s
 
   # Commands that are blocked during combat
   blocked_commands:
@@ -17,14 +27,8 @@ combat:
     - "tpacancel"
     - "rtp"
     - "warp"
-    - "warp spawn"
-    - "warp shop"
-    - "warp worlds"
-    - "warp crates"
-    - "warp afk"
-    - "warp auction"
     - "home"
-    - "team home"
+    - "team"
     - "enderchest"
     - "ec"
     - "vanish"
@@ -36,13 +40,17 @@ combat:
     - CHORUS_FRUIT
     - ELYTRA
 
-# Ender pearl cooldown (while in combat)
+#---------------------------------------------------
+#               Movement Restrictions
+#---------------------------------------------------
 enderpearl_cooldown:
   enabled: true
   # Ender pearl cooldown duration in seconds
-  duration: 10
+  duration: 10s
 
-# Combat logout punishment effects
+#---------------------------------------------------
+#              Combat Logout Effects
+#---------------------------------------------------
 logout_effects:
   # Strike lightning at player location (visual only)
   lightning: true
@@ -52,30 +60,95 @@ logout_effects:
   # Or NONE to disable sound
   sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
 
+#---------------------------------------------------
+#                  Kill Effects
+#---------------------------------------------------
 death_animation:
   enabled: true
   # Only play death animation for player kills
   only_player_kill: true
-  # Enable/disable each
+
+  # Enable/disable each animation type
   # If multiple are enabled, random one will play each time
   animation:
     lightning: true
     fire_particles: false
 
-# Combat kill rewards
+#---------------------------------------------------
+#                  Kill Rewards
+#---------------------------------------------------
 kill_rewards:
   enabled: true
+
+  # Commands to execute when a player gets a kill
+  # %killer% = killer's name, %victim% = victim's name
   commands:
     - "donutcratecore shards give %killer% 10"
+
   cooldown:
-    # Number of days before a player can receive rewards for killing the same player again
-    # Set to 0 to disable cooldown
-    days: 1
+    # Set to 0s to disable cooldown
+    duration: 1d
+
     # Whether to notify players when they kill someone on cooldown
     notify: false
 
-# Config barrier for WorldGuard no-pvp region
+#---------------------------------------------------
+#              WorldGuard Integration
+#---------------------------------------------------
+# WorldGuard's barrier for no-pvp region
 safezone_barrier:
-  duration: 5          # How long the barrier stays in seconds
-  height: 4            # How tall the barrier is
-  width: 5             # How wide the barrier is
+  # How long the barrier stays in seconds
+  duration: 5s
+
+  # Barrier dimensions
+  height: 4
+  width: 5
+
+#---------------------------------------------------
+#      ScreenShare Check System (Comming Soon)
+#---------------------------------------------------
+screenshare:
+  # Enable or disable the screenshare system
+  enabled: true
+
+  # Maximum duration of a screenshare check section (seconds)
+  # Set to 0 for unlimited time
+  max_duration: 5m
+
+  # Designated teleport location
+  location:
+    world: "world"
+    x: 0
+    y: 100
+    z: 0
+    yaw: 0
+    pitch: 0
+
+  # Movement restrictions
+  restrictions:
+    block_movement: true     # Prevent all movement
+    block_commands: true     # Block all commands except those in allowed_commands
+    block_chat: false        # Prevent the player from chatting
+    block_inventory: true    # Prevent inventory manipulation
+    invisible_to_others: true # Make screenshared player invisible to non-staff
+
+  # Commands allowed during screenshare
+  allowed_commands:
+    - "msg"
+    - "r"
+    - "tell"
+
+  # Actions when player disconnects during screenshare
+  disconnect_actions:
+    enabled: true
+    commands:
+      - "ban %player% Disconnected during screenshare"
+
+  end_commands:
+    # When player is clean (no cheats found)
+    clean:
+      - "tp %player% %previous_location%"
+
+    # When player is caught cheating
+    caught:
+      - "ban %player% Caught cheating during screenshare"

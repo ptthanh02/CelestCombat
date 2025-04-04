@@ -1,7 +1,7 @@
 prefix: "&8[&#4A90E2CelestCombat&8] "
 
 # ------------------------------------------------------
-# Combat messages
+#                  Combat messages
 # ------------------------------------------------------
 combat_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%time%s"
@@ -22,8 +22,11 @@ combat_expired:
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
-  action_bar: "&#E94E77Ender Pearl cooldown: &#FFFFFF%time%s"
+  message: "&#E94E77Ender Pearl is on cooldown for &#FFFFFF%time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
+
+combat_pearl_countdown:
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ender Pearl: &#FFFFFF%pearl_time%s"
 
 item_use_blocked_in_combat:
   message: "&#E94E77You cannot use %item% while in combat! &#F39C12Wait &#FFFFFF%time%s &#F39C12until combat ends."
@@ -55,7 +58,7 @@ killed_trying_to_enter_safezone_combat:
   sound: ENTITY_WITHER_HURT
 
 # ------------------------------------------------------
-# Plugin command messages
+#                Plugin command messages
 # ------------------------------------------------------
 no_permission:
   message: "&#E94E77You don't have permission to use this command."

@@ -1,7 +1,7 @@
 prefix: "&8[&#4A90E2CelestCombat&8] "
 
 # ------------------------------------------------------
-# Combat messages
+#                  Combat messages
 # ------------------------------------------------------
 combat_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%time%s"
@@ -22,7 +22,11 @@ combat_expired:
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
-  action_bar: "&#E94E77Ngọc Ender đang hồi: &#FFFFFF%time%s"
+  message: "&#E94E77Ngọc Ender đang trong thời gian hồi &#FFFFFF%time%s"
+  sound: BLOCK_NOTE_BLOCK_PLING
+
+combat_pearl_countdown:
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ngọc Ender: &#FFFFFF%pearl_time%s"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 item_use_blocked_in_combat:
@@ -55,7 +59,7 @@ killed_trying_to_enter_safezone_combat:
   sound: ENTITY_WITHER_HURT
 
 # ------------------------------------------------------
-# Plugin command messages
+#               Plugin command messages
 # ------------------------------------------------------
 no_permission:
   message: "&#E94E77Bạn không có quyền sử dụng lệnh này."
