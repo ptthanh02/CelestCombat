@@ -14,6 +14,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerToggleFlightEvent;
 
 import java.util.HashMap;
 import java.util.List;
@@ -185,6 +186,17 @@ public class CombatListeners implements Listener {
                     break;
                 }
             }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlayerToggleFlight(PlayerToggleFlightEvent event) {
+        Player player = event.getPlayer();
+
+        // If player is trying to enable flight
+        // Check if they're allowed to fly in combat
+        if (!plugin.getCombatManager().canFlyInCombat(player)) {
+            event.setCancelled(true);
         }
     }
 }

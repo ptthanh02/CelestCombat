@@ -22,14 +22,14 @@ combat_expired:
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
-  message: "&#E94E77Ender Pearl is on cooldown for &#FFFFFF%time%s"
+  message: "&#E94E77Ender Pearl is on cooldown!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 combat_pearl_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ender Pearl: &#FFFFFF%pearl_time%s"
 
 item_use_blocked_in_combat:
-  message: "&#E94E77You cannot use %item% while in combat! &#F39C12Wait &#FFFFFF%time%s &#F39C12until combat ends."
+  message: "&#E94E77You cannot use %item% while in combat!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 kill_reward_received:
@@ -38,6 +38,10 @@ kill_reward_received:
 
 kill_reward_on_cooldown:
   message: "&#F39C12You recently killed %victim%! &#E94E77Wait &#FFFFFF%days% days &#E94E77for the next reward."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
+combat_fly_disabled:
+  message: "&#E94E77You cannot fly while in combat!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------

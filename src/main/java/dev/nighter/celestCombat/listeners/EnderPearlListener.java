@@ -62,7 +62,6 @@ public class EnderPearlListener implements Listener {
                     int remainingTime = combatManager.getRemainingEnderPearlCooldown(player);
                     Map<String, String> placeholders = new HashMap<>();
                     placeholders.put("player", player.getName());
-                    placeholders.put("time", String.valueOf(remainingTime));
                     plugin.getMessageService().sendMessage(player, "enderpearl_cooldown", placeholders);
                 } else {
                     // Set cooldown when player successfully launches an ender pearl

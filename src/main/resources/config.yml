@@ -34,6 +34,9 @@ combat:
     - "vanish"
     - "v"
 
+  # Disable flight (creative fly) during combat
+  disable_flight: true
+
   # Items that are blocked during combat
   # Available items: Foods, Potions and Elytra
   disabled_items:
@@ -41,7 +44,7 @@ combat:
     - ELYTRA
 
 #---------------------------------------------------
-#               Movement Restrictions
+#              Movement Restrictions
 #---------------------------------------------------
 enderpearl_cooldown:
   enabled: true

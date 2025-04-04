@@ -4,11 +4,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TimeFormatter {
     private final JavaPlugin plugin;
+
+    // Cache for storing parsed time values
+    private final Map<String, Long> timeCache = new ConcurrentHashMap<>();
 
     // Constants for time conversion to ticks (1 tick = 1/20 second)
     private static final long TICKS_PER_SECOND = 20L;
@@ -46,16 +50,23 @@ public class TimeFormatter {
 
     /**
      * Gets a time value from config and converts it to ticks with a default fallback
+     * Uses cache to improve performance for repeated calls with the same path
      * Supports formats:
      * - Simple: "5s", "10m", "1h", etc.
      * - Complex: "1y_2mo_3w_4d_5h_6m_7s"
      * - Numeric: Direct tick value
      *
      * @param path The config path
-     * @param defaultValue Default value in ticks if path doesn't exist
+     * @param defaultValue Default value if path doesn't exist
      * @return Time in ticks
      */
     public long getTimeFromConfig(String path, String defaultValue) {
+        // Check if the value is already in cache
+        String cacheKey = path + ":" + defaultValue;
+        if (timeCache.containsKey(cacheKey)) {
+            return timeCache.get(cacheKey);
+        }
+
         String timeString = plugin.getConfig().getString(path, defaultValue);
         long result = parseTimeToTicks(timeString, -1L);
 
@@ -63,14 +74,17 @@ public class TimeFormatter {
             // Parsing failed
             plugin.getLogger().warning("Failed to parse time value for '" + path +
                     "' (value: '" + timeString + "'). Using 1h as fallback.");
-            return 3600L * 20L; // 1 hour in ticks
+            result = 3600L * 20L; // 1 hour in ticks
         }
-        // plugin.getLogger().info("Parsed time value for '" + path + "' (value: '" + timeString + "') to " + result + " ticks.");
+
+        // Cache the result
+        timeCache.put(cacheKey, result);
         return result;
     }
 
     /**
      * Gets a time value from config and converts it to ticks
+     * Uses cache to improve performance for repeated calls with the same path
      * Supports formats:
      * - Simple: "5s", "10m", "1h", etc.
      * - Complex: "1y_2mo_3w_4d_5h_6m_7s"
@@ -81,12 +95,33 @@ public class TimeFormatter {
      * @return Time in ticks
      */
     public long getTimeInTicks(String path, long defaultValue) {
+        // Check if the value is already in cache
+        String cacheKey = path + ":" + defaultValue;
+        if (timeCache.containsKey(cacheKey)) {
+            return timeCache.get(cacheKey);
+        }
+
         String timeString = plugin.getConfig().getString(path);
         if (timeString == null) {
+            // Cache the default value
+            timeCache.put(cacheKey, defaultValue);
             return defaultValue;
         }
 
-        return parseTimeToTicks(timeString, defaultValue);
+        long result = parseTimeToTicks(timeString, defaultValue);
+
+        // Cache the result
+        timeCache.put(cacheKey, result);
+        return result;
+    }
+
+    /**
+     * Clears the time cache.
+     * This should be called when the config is reloaded.
+     */
+    public void clearCache() {
+        timeCache.clear();
+        plugin.getLogger().info("Time formatter cache cleared.");
     }
 
     /**

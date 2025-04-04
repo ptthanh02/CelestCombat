@@ -58,7 +58,6 @@ public class ItemRestrictionListener implements Listener {
                 Map<String, String> placeholders = new HashMap<>();
                 placeholders.put("player", player.getName());
                 placeholders.put("item", formatItemName(item.getType()));
-                placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
                 plugin.getMessageService().sendMessage(player, "item_use_blocked_in_combat", placeholders);
             }
         }
@@ -77,7 +76,6 @@ public class ItemRestrictionListener implements Listener {
                 Map<String, String> placeholders = new HashMap<>();
                 placeholders.put("player", player.getName());
                 placeholders.put("item", "Elytra");
-                placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
                 plugin.getMessageService().sendMessage(player, "item_use_blocked_in_combat", placeholders);
             }
         }
@@ -104,7 +102,6 @@ public class ItemRestrictionListener implements Listener {
                     Map<String, String> placeholders = new HashMap<>();
                     placeholders.put("player", player.getName());
                     placeholders.put("item", "Elytra");
-                    placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
                     plugin.getMessageService().sendMessage(player, "item_use_blocked_in_combat", placeholders);
                 }
             }

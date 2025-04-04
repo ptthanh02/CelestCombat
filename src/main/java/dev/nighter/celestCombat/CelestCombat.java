@@ -137,4 +137,10 @@ public final class CelestCombat extends JavaPlugin {
     public long getTimeFromConfig(String path, String defaultValue) {
         return timeFormatter.getTimeFromConfig(path, defaultValue);
     }
+
+    public void refreshTimeCache() {
+        if (timeFormatter != null) {
+            timeFormatter.clearCache();
+        }
+    }
 }

@@ -53,6 +53,7 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         // Reload config
         plugin.reloadConfig();
         plugin.getLanguageManager().reloadLanguages();
+        plugin.refreshTimeCache();
 
         // Send message
         plugin.getMessageService().sendMessage(sender, "config_reloaded", placeholders);

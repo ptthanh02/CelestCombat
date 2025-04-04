@@ -22,15 +22,14 @@ combat_expired:
   sound: ENTITY_EXPERIENCE_ORB_PICKUP
 
 enderpearl_cooldown:
-  message: "&#E94E77Ngọc Ender đang trong thời gian hồi &#FFFFFF%time%s"
+  message: "&#E94E77Ngọc Ender đang trong thời gian hồi!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 combat_pearl_countdown:
-  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ngọc Ender: &#FFFFFF%pearl_time%s"
-  sound: BLOCK_NOTE_BLOCK_PLING
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ngọc Ender hồi: &#FFFFFF%pearl_time%s"
 
 item_use_blocked_in_combat:
-  message: "&#E94E77Bạn không thể sử dụng %item% khi đang trong combat! &#F39C12Chờ &#FFFFFF%time%s &#F39C12cho đến khi kết thúc."
+  message: "&#E94E77Bạn không thể sử dụng %item% khi đang trong combat!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 kill_reward_received:
@@ -39,6 +38,10 @@ kill_reward_received:
 
 kill_reward_on_cooldown:
   message: "&#F39C12Bạn vừa hạ gục %victim%! &#E94E77Hãy chờ &#FFFFFF%days% ngày &#E94E77để nhận phần thưởng tiếp theo."
+  sound: BLOCK_NOTE_BLOCK_PLING
+
+combat_fly_disabled:
+  message: "&#E94E77Bạn không thể bay khi đang trong combat!"
   sound: BLOCK_NOTE_BLOCK_PLING
 
 # ------------------------------------------------------
