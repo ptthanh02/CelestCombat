@@ -121,7 +121,7 @@ public class TimeFormatter {
      */
     public void clearCache() {
         timeCache.clear();
-        plugin.getLogger().info("Time formatter cache cleared.");
+        // plugin.getLogger().info("Time formatter cache cleared.");
     }
 
     /**

@@ -54,6 +54,12 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
         plugin.reloadConfig();
         plugin.getLanguageManager().reloadLanguages();
         plugin.refreshTimeCache();
+        if(plugin.getWorldGuardHook() != null) {
+            plugin.getWorldGuardHook().reloadConfig();
+        }
+
+        // Reload combat manager configuration
+        plugin.getCombatManager().reloadConfig();
 
         // Send message
         plugin.getMessageService().sendMessage(sender, "config_reloaded", placeholders);

@@ -42,7 +42,9 @@ public class ConfigUpdater {
             return;
         }
 
-        plugin.getLogger().info("Updating config from version " + configVersionStr + " to " + currentVersion);
+        if (!configVersionStr.equals("0.0.0")) {
+            plugin.getLogger().info("Updating config from version " + configVersionStr + " to " + currentVersion);
+        }
 
         try {
             Map<String, Object> userValues = flattenConfig(currentConfig);
@@ -62,7 +64,9 @@ public class ConfigUpdater {
                 Files.copy(configFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 plugin.getLogger().info("Config backup created at " + backupFile.getName());
             } else {
-                plugin.getLogger().info("No significant config changes detected, skipping backup creation");
+                if (!configVersionStr.equals("0.0.0")) {
+                    plugin.getLogger().info("No significant config changes detected, skipping backup creation");
+                }
             }
 
             // Apply user values and save

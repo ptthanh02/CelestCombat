@@ -27,6 +27,12 @@ public class MessageService {
 
         String locale = languageManager.getDefaultLocale();
 
+        if (!languageManager.keyExists(key, locale)) {
+            plugin.getLogger().warning("Messsage " + key + " doesn't exsist in the language file.");
+            sender.sendMessage("§8[§9CelestCombat§8]§c Messsage " + key + " doesn't exsist in the language file.");
+            return;
+        }
+
         // Chat message - only send if message exists
         String message = languageManager.getMessage(key, locale, placeholders);
         if (message != null && !message.startsWith("Missing message:")) {

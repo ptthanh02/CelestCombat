@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,15 +28,17 @@ public class CombatManager {
     @Getter private final Map<String, Long> killRewardCooldowns = new ConcurrentHashMap<>();
 
     // Combat configuration cache to avoid repeated config lookups
-    private final long combatDurationTicks;
-    private final long combatDurationSeconds;
-    private final boolean disableFlightInCombat;
-    private final long enderPearlCooldownTicks;
-    private final long enderPearlCooldownSeconds;
-    private final long killRewardCooldownTicks;
-    private final long killRewardCooldownDays;
-    private final String logoutSoundName;
-    private final boolean useLogoutLightning;
+    private long combatDurationTicks;
+    private long combatDurationSeconds;
+    private boolean disableFlightInCombat;
+    private long enderPearlCooldownTicks;
+    private long enderPearlCooldownSeconds;
+    private Map<String, Boolean> worldEnderPearlSettings = new ConcurrentHashMap<>();
+    private boolean enderPearlInCombatOnly;
+    private boolean enderPearlEnabled;
+    private long killRewardCooldownTicks;
+    private long killRewardCooldownDays;
+    private boolean exemptAdminKick;
 
     public CombatManager(CelestCombat plugin) {
         this.plugin = plugin;
@@ -48,15 +51,55 @@ public class CombatManager {
         this.combatDurationTicks = plugin.getTimeFromConfig("combat.duration", "20s");
         this.combatDurationSeconds = combatDurationTicks / 20;
         this.disableFlightInCombat = plugin.getConfig().getBoolean("combat.disable_flight", true);
+
         this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
         this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
+        this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
+        this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
+        this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
+        this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
+        // Load per-world settings
+        loadWorldEnderPearlSettings();
+
         this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
         this.killRewardCooldownDays = killRewardCooldownTicks / (20 * 60 * 60 * 24);
-        this.logoutSoundName = plugin.getConfig().getString("combat.logout_effects.sound", "ENTITY_LIGHTNING_BOLT_THUNDER");
-        this.useLogoutLightning = plugin.getConfig().getBoolean("combat.logout_effects.lightning", true);
+
+        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
 
         // Start the global countdown timer
         startGlobalCountdownTimer();
+    }
+
+    public void reloadConfig() {
+        // Update cached configuration values
+        this.combatDurationTicks = plugin.getTimeFromConfig("combat.duration", "20s");
+        this.combatDurationSeconds = combatDurationTicks / 20;
+        this.disableFlightInCombat = plugin.getConfig().getBoolean("combat.disable_flight", true);
+
+        this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
+        this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
+        this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
+        this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
+        this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
+        this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
+        loadWorldEnderPearlSettings();
+
+        this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
+        this.killRewardCooldownDays = killRewardCooldownTicks / (20 * 60 * 60 * 24);
+        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
+
+    }
+
+    // Add this method to load world-specific settings
+    private void loadWorldEnderPearlSettings() {
+        worldEnderPearlSettings.clear();
+
+        if (plugin.getConfig().isConfigurationSection("enderpearl_cooldown.worlds")) {
+            for (String worldName : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("enderpearl_cooldown.worlds")).getKeys(false)) {
+                boolean enabled = plugin.getConfig().getBoolean("enderpearl_cooldown.worlds." + worldName, true);
+                worldEnderPearlSettings.put(worldName, enabled);
+            }
+        }
     }
 
     private void startGlobalCountdownTimer() {
@@ -142,8 +185,18 @@ public class CombatManager {
                     plugin.getMessageService().sendMessage(player, "combat_countdown", placeholders);
                 }
             }
+        } else if (hasPearlCooldown) {
+            // Player is not in combat but has pearl cooldown
+            // This handles the case where in_combat_only is false
+            int remainingPearlTime = getRemainingEnderPearlCooldown(player, currentTime);
+
+            if (remainingPearlTime > 0) {
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("player", player.getName());
+                placeholders.put("time", String.valueOf(remainingPearlTime));
+                plugin.getMessageService().sendMessage(player, "pearl_only_countdown", placeholders);
+            }
         }
-        // Don't handle only pearl cooldown because player is not in combat
     }
 
     public void tagPlayer(Player player, Player attacker) {
@@ -184,29 +237,7 @@ public class CombatManager {
         if (player == null) return;
 
         player.setHealth(0);
-        applyLogoutEffects(player.getLocation());
         removeFromCombat(player);
-    }
-
-    private void applyLogoutEffects(Location location) {
-        if (location == null) return;
-
-        // Batch location-based effects in a single task
-        Scheduler.runLocationTask(location, () -> {
-            if (useLogoutLightning) {
-                location.getWorld().strikeLightningEffect(location);
-            }
-
-            // Only play sound if not set to "NONE"
-            if (logoutSoundName != null && !logoutSoundName.isEmpty() && !logoutSoundName.equalsIgnoreCase("NONE")) {
-                try {
-                    Sound sound = Sound.valueOf(logoutSoundName);
-                    location.getWorld().playSound(location, sound, 1.0F, 1.0F);
-                } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid sound effect in config: " + logoutSoundName);
-                }
-            }
-        });
     }
 
     public void removeFromCombat(Player player) {
@@ -226,6 +257,22 @@ public class CombatManager {
         if (player.isOnline()) {
             plugin.getMessageService().sendMessage(player, "combat_expired");
         }
+    }
+
+    public void removeFromCombatSilently(Player player) {
+        if (player == null) return;
+
+        UUID playerUUID = player.getUniqueId();
+
+        playersInCombat.remove(playerUUID);
+        combatOpponents.remove(playerUUID);
+
+        Scheduler.Task task = combatTasks.remove(playerUUID);
+        if (task != null) {
+            task.cancel();
+        }
+
+        // No message is sent
     }
 
     public Player getCombatOpponent(Player player) {
@@ -285,7 +332,18 @@ public class CombatManager {
         if (player == null) return;
 
         // Only set cooldown if enabled in config
-        if (!plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true)) {
+        if (!enderPearlEnabled) {
+            return;
+        }
+
+        // Check world-specific settings
+        String worldName = player.getWorld().getName();
+        if (worldEnderPearlSettings.containsKey(worldName) && !worldEnderPearlSettings.get(worldName)) {
+            return; // Don't set cooldown in this world
+        }
+
+        // Check if we should only apply cooldown in combat
+        if (enderPearlInCombatOnly && !isInCombat(player)) {
             return;
         }
 
@@ -296,8 +354,19 @@ public class CombatManager {
     public boolean isEnderPearlOnCooldown(Player player) {
         if (player == null) return false;
 
-        // If ender pearl cooldowns are disabled in config, always return false
-        if (!plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true)) {
+        // If all ender pearl cooldowns are disabled globally, always return false
+        if (!enderPearlEnabled) {
+            return false;
+        }
+
+        // Check world-specific settings
+        String worldName = player.getWorld().getName();
+        if (worldEnderPearlSettings.containsKey(worldName) && !worldEnderPearlSettings.get(worldName)) {
+            return false; // Cooldown disabled for this specific world
+        }
+
+        // Check if we should only apply cooldown in combat
+        if (enderPearlInCombatOnly && !isInCombat(player)) {
             return false;
         }
 
@@ -378,6 +447,11 @@ public class CombatManager {
 
     public boolean canFlyInCombat(Player player) {
         if (player == null) return true;
+
+        // If player has permission to fly in combat, allow it
+        if (player.hasPermission("celestcombat.combat.fly")) {
+            return true;
+        }
 
         // If flight in combat is allowed in config or player isn't in combat, allow flight
         if (!disableFlightInCombat || !isInCombat(player)) {

@@ -54,6 +54,7 @@ public class LanguageManager {
     }
 
     private void saveDefaultFiles() {
+        saveResource("language/custom/messages.yml");
         saveResource("language/vi_VN/messages.yml");
     }
 
@@ -461,5 +462,22 @@ public class LanguageManager {
     private LocaleData getLocaleData(String locale) {
         return Optional.ofNullable(localeMap.get(locale))
                 .orElse(localeMap.get(defaultLocale));
+    }
+
+    public boolean keyExists(String key, String locale) {
+        // Track locale usage when accessed
+        trackLocaleUsage(locale);
+
+        LocaleData localeData = getLocaleData(locale);
+        if (localeData.getMessages().contains(key)) {
+            return true;
+        }
+
+        if (!locale.equals(defaultLocale)) {
+            LocaleData defaultLocaleData = getLocaleData(defaultLocale);
+            return defaultLocaleData.getMessages().contains(key);
+        }
+
+        return false;
     }
 }

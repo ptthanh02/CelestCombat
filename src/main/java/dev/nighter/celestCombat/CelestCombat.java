@@ -14,6 +14,7 @@ import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
 import dev.nighter.celestCombat.updates.ConfigUpdater;
+import dev.nighter.celestCombat.updates.LanguageUpdater;
 import dev.nighter.celestCombat.updates.UpdateChecker;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -31,9 +32,12 @@ public final class CelestCombat extends JavaPlugin {
     private MessageService messageService;
     private UpdateChecker updateChecker;
     private ConfigUpdater configUpdater;
+    private LanguageUpdater languageUpdater;
     private TimeFormatter timeFormatter;
     private GuiService guiService;
     private CombatManager combatManager;
+    private CombatListeners combatListeners;
+    private EnderPearlListener enderPearlListener;
     private DeathAnimationManager deathAnimationManager;
     private WorldGuardHook worldGuardHook;
 
@@ -62,14 +66,23 @@ public final class CelestCombat extends JavaPlugin {
         configUpdater = new ConfigUpdater(this);
         configUpdater.checkAndUpdateConfig();
         timeFormatter = new TimeFormatter(this);
+        languageUpdater = new LanguageUpdater(this);
+        languageUpdater.checkAndUpdateLanguageFiles();
 
         // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);
         combatManager = new CombatManager(this);
 
         // Register listeners
-        getServer().getPluginManager().registerEvents(new CombatListeners(this, combatManager), this);
-        getServer().getPluginManager().registerEvents(new EnderPearlListener(this, combatManager), this);
+        // CombatListeners
+        combatListeners = new CombatListeners(this, combatManager);
+        getServer().getPluginManager().registerEvents(combatListeners, this);
+
+        // EnderPearlListener
+        enderPearlListener = new EnderPearlListener(this, combatManager);
+        getServer().getPluginManager().registerEvents(enderPearlListener, this);
+
+        // ItemRestrictionListener
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
         // Register WorldGuard hook if available
@@ -96,11 +109,17 @@ public final class CelestCombat extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Clean up combat manager
         if (combatManager != null) {
             combatManager.shutdown();
         }
 
+        if(combatListeners != null) {
+            combatListeners.shutdown();
+        }
+
+        if (enderPearlListener != null) {
+            enderPearlListener.shutdown();
+        }
         getLogger().info("CelestCombat has been disabled!");
     }
 

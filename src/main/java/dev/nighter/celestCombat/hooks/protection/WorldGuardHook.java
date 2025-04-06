@@ -46,9 +46,10 @@ public class WorldGuardHook implements Listener {
     private final Map<UUID, Set<Location>> activeBarriers = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastBarrierTime = new ConcurrentHashMap<>();
     private final long BARRIER_COOLDOWN = 2000; // 2 seconds cooldown between barriers
-    private final long BARRIER_DURATION_TICKS;
-    private final int BARRIER_HEIGHT;
-    private final int BARRIER_WIDTH;
+    private long BARRIER_DURATION_TICKS;
+    private int BARRIER_HEIGHT;
+    private int BARRIER_WIDTH;
+    private Material BARRIER_MATERIAL;
     private final Map<UUID, SafezoneApproachTracker> safezoneApproachTrackers = new ConcurrentHashMap<>();
 
     // Track ender pearls from combat players
@@ -87,12 +88,21 @@ public class WorldGuardHook implements Listener {
         this.combatManager = combatManager;
 
         // Get barrier configuration
-        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "5s");
-        this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 4);
+        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "3s");
+        this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 8);
         this.BARRIER_WIDTH = plugin.getConfig().getInt("safezone_barrier.width", 5);
+        this.BARRIER_MATERIAL = Material.getMaterial(plugin.getConfig().getString("safezone_barrier.block", "RED_STAINED_GLASS_PANE").toUpperCase());
 
         // Schedule regular cache cleanup
         Scheduler.runTaskTimer(this::cleanupCache, 1200L, 1200L); // Run every minute (20 ticks/sec * 60)
+    }
+
+    public void reloadConfig() {
+        // Reload barrier configuration
+        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "3s");
+        this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 8);
+        this.BARRIER_WIDTH = plugin.getConfig().getInt("safezone_barrier.width", 5);
+        this.BARRIER_MATERIAL = Material.getMaterial(plugin.getConfig().getString("safezone_barrier.block", "RED_STAINED_GLASS_PANE").toUpperCase());
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -416,7 +426,7 @@ public class WorldGuardHook implements Listener {
 
                     // Change block safely using Bukkit scheduler
                     Scheduler.runLocationTask(blockLoc, () -> {
-                        block.setType(Material.RED_STAINED_GLASS_PANE);
+                        block.setType(BARRIER_MATERIAL);
                     });
                 }
             }
@@ -436,7 +446,7 @@ public class WorldGuardHook implements Listener {
         for (Location loc : barrierBlocks) {
             Scheduler.runLocationTask(loc, () -> {
                 Block block = loc.getBlock();
-                if (block.getType() == Material.RED_STAINED_GLASS_PANE) {
+                if (block.getType() == BARRIER_MATERIAL) {
                     block.setType(Material.AIR);
                 }
             });
@@ -576,7 +586,7 @@ public class WorldGuardHook implements Listener {
             Set<Location> barriers = activeBarriers.get(playerUUID);
             for (Location loc : barriers) {
                 Block block = loc.getBlock();
-                if (block.getType() == Material.RED_STAINED_GLASS_PANE) {
+                if (block.getType() == BARRIER_MATERIAL) {
                     block.setType(Material.AIR);
                 }
             }
