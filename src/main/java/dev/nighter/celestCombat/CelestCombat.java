@@ -147,7 +147,7 @@ public final class CelestCombat extends JavaPlugin {
 
     private void setupBtatsMetrics() {
         Scheduler.runTask(() -> {
-            Metrics metrics = new Metrics(this, 25281);
+            Metrics metrics = new Metrics(this, 25387);
             metrics.addCustomChart(new Metrics.SimplePie("players",
                     () -> String.valueOf(Bukkit.getOnlinePlayers().size())));
         });

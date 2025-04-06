@@ -445,15 +445,6 @@ public final class Scheduler {
     }
 
     /**
-     * Determines if the server is running on Folia.
-     *
-     * @return true if the server is running on Folia
-     */
-    public static boolean isFolia() {
-        return isFolia;
-    }
-
-    /**
      * Wrapper class for both Bukkit and Folia tasks.
      */
     public static class Task {

@@ -217,7 +217,7 @@ public class CombatManager {
         }
 
         // Check if we should disable flight
-        if (disableFlightInCombat) {
+        if (!canFlyInCombat(player)) {
             if (player.isFlying()) {
                 player.setFlying(false);
             }
