@@ -87,18 +87,10 @@ public class CombatListeners implements Listener {
         Player player = event.getPlayer();
 
         if (combatManager.isInCombat(player)) {
-            Player opponent = combatManager.getCombatOpponent(player);
             playerLoggedOutInCombat.put(player.getUniqueId(), true);
 
             // Punish the player for combat logging
             combatManager.punishCombatLogout(player);
-
-            // Only give rewards if there's an opponent
-            if (opponent != null && opponent.isOnline()) {
-                plugin.getDeathAnimationManager().performDeathAnimation(player, opponent);
-            } else {
-                plugin.getDeathAnimationManager().performDeathAnimation(player, null);
-            }
 
         } else {
             playerLoggedOutInCombat.put(player.getUniqueId(), false);

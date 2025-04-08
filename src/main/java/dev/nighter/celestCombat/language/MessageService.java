@@ -2,10 +2,15 @@ package dev.nighter.celestCombat.language;
 
 import dev.nighter.celestCombat.CelestCombat;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,18 +23,17 @@ public class MessageService {
         sendMessage(sender, key, new HashMap<>());
     }
 
-    public void sendMessage(CommandSender sender, String key, Map<String, String> placeholders) {
-        // Add player placeholder by default if sender is a player
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
-            placeholders.put("player", player.getName());
-        }
+    // Keep the original method for backward compatibility
+    public void sendMessage(Player player, String key, Map<String, String> placeholders) {
+        sendMessage((CommandSender) player, key, placeholders);
+    }
 
+    public void sendMessage(CommandSender sender, String key, Map<String, String> placeholders) {
         String locale = languageManager.getDefaultLocale();
 
         if (!languageManager.keyExists(key, locale)) {
-            plugin.getLogger().warning("Messsage " + key + " doesn't exsist in the language file.");
-            sender.sendMessage("§8[§9CelestCombat§8]§c Messsage " + key + " doesn't exsist in the language file.");
+            plugin.getLogger().warning("Message " + key + " doesn't exist in the language file.");
+            sender.sendMessage("§8[§9CelestCombat§8]§c Message " + key + " doesn't exist in the language file.");
             return;
         }
 
@@ -60,19 +64,8 @@ public class MessageService {
             // Sound - only play if exists
             String soundName = languageManager.getSound(key, locale);
             if (soundName != null) {
-                try {
-                    Sound sound = Sound.valueOf(soundName);
-                    player.playSound(player.getLocation(), sound, 1.0f, 1.0f);
-                } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid sound name: " + soundName);
-                }
+                player.playSound(player.getLocation(), soundName , 1.0f, 1.0f);
             }
         }
     }
-
-    // Keep the original method for backward compatibility
-    public void sendMessage(Player player, String key, Map<String, String> placeholders) {
-        sendMessage((CommandSender) player, key, placeholders);
-    }
-
 }

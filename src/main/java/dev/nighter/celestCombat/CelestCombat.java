@@ -58,6 +58,8 @@ public final class CelestCombat extends JavaPlugin {
         // Initialize language manager
         languageManager = new LanguageManager(this,
                 LanguageManager.LanguageFileType.MESSAGES);
+        languageUpdater = new LanguageUpdater(this);
+        languageUpdater.checkAndUpdateLanguageFiles();
 
         // Initialize services
         messageService = new MessageService(this, languageManager);
@@ -66,8 +68,6 @@ public final class CelestCombat extends JavaPlugin {
         configUpdater = new ConfigUpdater(this);
         configUpdater.checkAndUpdateConfig();
         timeFormatter = new TimeFormatter(this);
-        languageUpdater = new LanguageUpdater(this);
-        languageUpdater.checkAndUpdateLanguageFiles();
 
         // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);
@@ -86,9 +86,11 @@ public final class CelestCombat extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
         // Register WorldGuard hook if available
-        if (hasWorldGuard) {
+        if (hasWorldGuard && getConfig().getBoolean("safezone_barrier.enabled", true)) {
             worldGuardHook = new WorldGuardHook(this, combatManager);
             getServer().getPluginManager().registerEvents(new WorldGuardHook(this, combatManager), this);
+        } else if(hasWorldGuard) {
+            getLogger().info("Found WorldGuard but safe zone barrier is disabled in config.");
         }
 
         // Register commands

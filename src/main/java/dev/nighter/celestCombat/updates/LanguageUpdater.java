@@ -26,20 +26,11 @@ public class LanguageUpdater {
      * Check and update all language files
      */
     public void checkAndUpdateLanguageFiles() {
-        // Create language directories if they don't exist
         for (String language : SUPPORTED_LANGUAGES) {
             File langDir = new File(plugin.getDataFolder(), "language/" + language);
-            if (!langDir.exists()) {
-                langDir.mkdirs();
-            }
 
             // Check and update each language file
             File messageFile = new File(langDir, "messages.yml");
-            if (!messageFile.exists()) {
-                createDefaultLanguageFile(language);
-                continue;
-            }
-
             updateLanguageFile(language, messageFile);
         }
     }
@@ -96,13 +87,6 @@ public class LanguageUpdater {
         }
     }
 
-    /**
-     * Create default language file
-     */
-    private void createDefaultLanguageFile(String language) {
-        File messageFile = new File(plugin.getDataFolder(), "language/" + language + "/messages.yml");
-        createDefaultLanguageFileWithHeader(language, messageFile);
-    }
 
     /**
      * Create a default language file with a version header
@@ -199,18 +183,6 @@ public class LanguageUpdater {
             } else {
                 plugin.getLogger().warning("Message path '" + path + "' from old messages no longer exists in new messages");
             }
-        }
-    }
-
-    /**
-     * Add a new supported language to the updater
-     */
-    public void addSupportedLanguage(String languageCode) {
-        if (!SUPPORTED_LANGUAGES.contains(languageCode)) {
-            List<String> newList = new ArrayList<>(SUPPORTED_LANGUAGES);
-            newList.add(languageCode);
-            SUPPORTED_LANGUAGES.clear();
-            SUPPORTED_LANGUAGES.addAll(newList);
         }
     }
 }

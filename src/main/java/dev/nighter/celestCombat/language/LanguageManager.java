@@ -54,7 +54,6 @@ public class LanguageManager {
     }
 
     private void saveDefaultFiles() {
-        saveResource("language/custom/messages.yml");
         saveResource("language/vi_VN/messages.yml");
     }
 
@@ -193,7 +192,7 @@ public class LanguageManager {
 
             // Merge configurations (add missing keys from default to user config)
             boolean updated = false;
-            for (String key : defaultConfig.getKeys(true)) {
+            for (String key : defaultConfig.getKeys(false)) {
                 if (!userConfig.contains(key)) {
                     userConfig.set(key, defaultConfig.get(key));
                     updated = true;

@@ -1,13 +1,3 @@
-#=============================================================
-#                     CELEST COMBAT
-#                      Configuration
-#=============================================================
-
-# TIME FORMAT GUIDE
-# Simple formats: 20s (20 seconds), 5m (5 minutes), 1h (1 hour)
-# Complex format: 1d_2h_30m_15s (1 day, 2 hours, 30 minutes, 15 seconds)
-# Units: s = seconds, m = minutes, h = hours, d = days, w = weeks, mo = months, y = years
-
 #---------------------------------------------------
 #              LANGUAGE SETTINGS
 #---------------------------------------------------
@@ -27,6 +17,11 @@ language: en_US
 #---------------------------------------------------
 #              CORE COMBAT SETTINGS
 #---------------------------------------------------
+# TIME FORMAT GUIDE
+# Simple formats: 20s (20 seconds), 5m (5 minutes), 1h (1 hour)
+# Complex format: 1d_2h_30m_15s (1 day, 2 hours, 30 minutes, 15 seconds)
+# Units: s = seconds, m = minutes, h = hours, d = days, w = weeks, mo = months, y = years
+
 combat:
   # Combat tag duration
   duration: 20s
@@ -94,7 +89,7 @@ death_animation:
   # Animation types (random selection if multiple enabled)
   animation:
     lightning: true
-    fire_particles: false
+    fire_particles: true
 
 #---------------------------------------------------
 #                  KILL REWARDS
@@ -120,6 +115,9 @@ kill_rewards:
 #---------------------------------------------------
 # WorldGuard's barrier for no-pvp regions
 safezone_barrier:
+  # Enable/disable WorldGuard integration for safezone barriers
+  enabled: true
+
   # Barrier duration
   duration: 3s
 
