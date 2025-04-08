@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/ptthanh02/CelestCombat)
 [![API](https://img.shields.io/badge/API-1.21-green.svg)](https://www.spigotmc.org/)
 [![Folia](https://img.shields.io/badge/Folia-supported-brightgreen.svg)](https://github.com/PaperMC/Folia)
-[![bStats](https://img.shields.io/bstats/servers/25281)](https://bstats.org/plugin/bukkit/CelestCombat/25387)
+[![bStats](https://img.shields.io/bstats/servers/25387)](https://bstats.org/plugin/bukkit/CelestCombat/25387)
 
 **CelestCombat** is a lightweight yet powerful combat management plugin mainly designed for SwordPvP, preventing combat logging and ensuring fair PvP battles on Minecraft servers.
 
@@ -238,7 +238,7 @@ safezone_barrier:
 
 ## 📊 Plugin Statistics
 
-[<img src="https://bstats.org/signatures/bukkit/CelesCombat.svg" alt="bStats Chart"/>](https://bstats.org/plugin/bukkit/CelesCombat/25281)
+[<img src="https://bstats.org/signatures/bukkit/CelesCombat.svg" alt="bStats Chart"/>](https://bstats.org/plugin/bukkit/CelesCombat/25387)
 
 ## 💬 Support
 
