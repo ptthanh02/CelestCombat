@@ -238,7 +238,7 @@ safezone_barrier:
 
 ## 📊 Plugin Statistics
 
-[<img src="https://bstats.org/signatures/bukkit/CelesCombat.svg" alt="bStats Chart"/>](https://bstats.org/plugin/bukkit/CelesCombat/25387)
+[<img src="https://bstats.org/signatures/bukkit/CelestCombat.svg" alt="bStats Chart"/>](https://bstats.org/plugin/bukkit/CelesCombat/25387)
 
 ## 💬 Support
 
