@@ -74,7 +74,7 @@ public final class CelestCombat extends JavaPlugin {
 
         // Register listeners
         // CombatListeners
-        combatListeners = new CombatListeners(this, combatManager);
+        combatListeners = new CombatListeners(this);
         getServer().getPluginManager().registerEvents(combatListeners, this);
 
         // EnderPearlListener
@@ -86,8 +86,10 @@ public final class CelestCombat extends JavaPlugin {
 
         // Register WorldGuard hook if available
         if (hasWorldGuard && getConfig().getBoolean("safezone_barrier.enabled", true)) {
+            // Create a single instance of WorldGuardHook to avoid duplicate listeners
             worldGuardHook = new WorldGuardHook(this, combatManager);
-            getServer().getPluginManager().registerEvents(new WorldGuardHook(this, combatManager), this);
+            getServer().getPluginManager().registerEvents(worldGuardHook, this);
+            debug("WorldGuard safezone protection enabled");
         } else if(hasWorldGuard) {
             getLogger().info("Found WorldGuard but safe zone barrier is disabled in config.");
         }
@@ -121,6 +123,12 @@ public final class CelestCombat extends JavaPlugin {
         if (enderPearlListener != null) {
             enderPearlListener.shutdown();
         }
+
+        // Shutdown WorldGuardHook properly
+        if (worldGuardHook != null) {
+            worldGuardHook.shutdown();
+        }
+
         getLogger().info("CelestCombat has been disabled!");
     }
 

@@ -4,8 +4,6 @@ import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.Scheduler;
 import lombok.Getter;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -27,6 +25,9 @@ public class CombatManager {
     @Getter private final Map<UUID, Long> enderPearlCooldowns;
     @Getter private final Map<String, Long> killRewardCooldowns = new ConcurrentHashMap<>();
 
+    // Store cooldown configs by permission or group
+    @Getter private final Map<String, Long> killRewardCooldownsByPermission = new ConcurrentHashMap<>();
+
     // Combat configuration cache to avoid repeated config lookups
     private long combatDurationTicks;
     private long combatDurationSeconds;
@@ -36,9 +37,20 @@ public class CombatManager {
     private Map<String, Boolean> worldEnderPearlSettings = new ConcurrentHashMap<>();
     private boolean enderPearlInCombatOnly;
     private boolean enderPearlEnabled;
+
+    // Kill reward configuration
     private long killRewardCooldownTicks;
-    private long killRewardCooldownDays;
+    private long killRewardCooldownSeconds;
+    private long samePlayerKillRewardCooldownTicks; // New for same-player cooldown
+    private boolean usePermissionBasedCooldowns;
+    private boolean useSamePlayerCooldown;
+    private boolean useGlobalPlayerCooldown;
+
     private boolean exemptAdminKick;
+
+    // Cleanup task for expired cooldowns
+    private Scheduler.Task cleanupTask;
+    private static final long CLEANUP_INTERVAL = 12000L; // 10 minutes in ticks
 
     public CombatManager(CelestCombat plugin) {
         this.plugin = plugin;
@@ -56,18 +68,42 @@ public class CombatManager {
         this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
         this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
-        this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
-        this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
+
         // Load per-world settings
         loadWorldEnderPearlSettings();
 
-        this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
-        this.killRewardCooldownDays = killRewardCooldownTicks / (20 * 60 * 60 * 24);
+        // Load kill reward settings
+        loadKillRewardSettings();
 
         this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
 
         // Start the global countdown timer
         startGlobalCountdownTimer();
+
+        // Start the cleanup task
+        startCleanupTask();
+    }
+
+    private void loadKillRewardSettings() {
+        // Basic cooldown settings
+        this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
+        this.killRewardCooldownSeconds = killRewardCooldownTicks / 20;
+
+        // Advanced cooldown settings
+        this.useSamePlayerCooldown = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_same_player_cooldown", true);
+        this.samePlayerKillRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.same_player_duration", "1d");
+
+        this.useGlobalPlayerCooldown = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_global_cooldown", false);
+
+        // Permission-based cooldowns
+        this.usePermissionBasedCooldowns = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_permission_cooldowns", false);
+        if (usePermissionBasedCooldowns && plugin.getConfig().isConfigurationSection("kill_rewards.cooldown.permissions")) {
+            for (String perm : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("kill_rewards.cooldown.permissions")).getKeys(false)) {
+                String path = "kill_rewards.cooldown.permissions." + perm;
+                long permCooldown = plugin.getTimeFromConfig(path, "1d");
+                killRewardCooldownsByPermission.put(perm, permCooldown);
+            }
+        }
     }
 
     public void reloadConfig() {
@@ -80,14 +116,12 @@ public class CombatManager {
         this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
         this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
-        this.enderPearlCooldownTicks = plugin.getTimeFromConfig("enderpearl_cooldown.duration", "10s");
-        this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
         loadWorldEnderPearlSettings();
 
-        this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
-        this.killRewardCooldownDays = killRewardCooldownTicks / (20 * 60 * 60 * 24);
-        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
+        // Reload kill reward settings
+        loadKillRewardSettings();
 
+        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
     }
 
     // Add this method to load world-specific settings
@@ -102,6 +136,24 @@ public class CombatManager {
         }
     }
 
+    private void startCleanupTask() {
+        if (cleanupTask != null) {
+            cleanupTask.cancel();
+        }
+
+        cleanupTask = Scheduler.runTaskTimerAsync(() -> {
+            long currentTime = System.currentTimeMillis();
+
+            // Clean up kill reward cooldowns
+            killRewardCooldowns.entrySet().removeIf(entry -> currentTime > entry.getValue());
+
+            // Log cleanup stats if debug enabled
+            if (plugin.getConfig().getBoolean("debug", false)) {
+                plugin.getLogger().info("Cleaned up kill reward cooldowns. Current size: " + killRewardCooldowns.size());
+            }
+        }, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
+    }
+
     private void startGlobalCountdownTimer() {
         if (globalCountdownTask != null) {
             globalCountdownTask.cancel();
@@ -111,7 +163,7 @@ public class CombatManager {
             long currentTime = System.currentTimeMillis();
 
             // Process all players in a single timer tick
-            for (Map.Entry<UUID, Long> entry : playersInCombat.entrySet()) {
+            for (Map.Entry<UUID, Long> entry : new HashMap<>(playersInCombat).entrySet()) {
                 UUID playerUUID = entry.getKey();
                 long combatEndTime = entry.getValue();
 
@@ -144,9 +196,6 @@ public class CombatManager {
                     currentTime > entry.getValue() ||
                             Bukkit.getPlayer(entry.getKey()) == null
             );
-
-            // Clean up expired kill reward cooldowns
-            killRewardCooldowns.entrySet().removeIf(entry -> currentTime > entry.getValue());
 
         }, 0L, COUNTDOWN_INTERVAL);
     }
@@ -202,6 +251,10 @@ public class CombatManager {
     public void tagPlayer(Player player, Player attacker) {
         if (player == null || attacker == null) return;
 
+        if (player.hasPermission("celestcombat.bypass.tag")) {
+            return;
+        }
+
         UUID playerUUID = player.getUniqueId();
         long newEndTime = System.currentTimeMillis() + (combatDurationSeconds * 1000L);
 
@@ -217,10 +270,8 @@ public class CombatManager {
         }
 
         // Check if we should disable flight
-        if (!canFlyInCombat(player)) {
-            if (player.isFlying()) {
-                player.setFlying(false);
-            }
+        if (shouldDisableFlight(player) && player.isFlying()) {
+            player.setFlying(false);
         }
 
         combatOpponents.put(playerUUID, attacker.getUniqueId());
@@ -400,72 +451,211 @@ public class CombatManager {
         return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
     }
 
-    public void setKillRewardCooldown(Player killer, Player victim) {
-        if (killer == null || victim == null || killRewardCooldownDays <= 0) return;
+    /**
+     * Gets the kill reward cooldown duration for a specific player
+     *
+     * @param killer The player who killed another player
+     * @param isSamePlayerCooldown Whether to use the same-player cooldown duration
+     * @return Cooldown duration in milliseconds
+     */
+    private long getKillRewardCooldownDuration(Player killer, boolean isSamePlayerCooldown) {
+        if (killer == null) return 0;
 
-        // Create a unique key for this killer-victim pair
-        String key = killer.getUniqueId() + ":" + victim.getUniqueId();
+        // Check if permission-based cooldowns are enabled
+        if (usePermissionBasedCooldowns) {
+            // Check for permission-based cooldowns, starting from most specific
+            for (Map.Entry<String, Long> entry : killRewardCooldownsByPermission.entrySet()) {
+                if (killer.hasPermission("celestcombat.cooldown." + entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+        }
 
-        // Calculate expiration time (current time + cooldown in milliseconds)
-        long expirationTime = System.currentTimeMillis() + (killRewardCooldownDays * 24L * 60L * 60L * 1000L);
-        killRewardCooldowns.put(key, expirationTime);
+        // If it's a same-player cooldown and that setting is enabled
+        if (isSamePlayerCooldown && useSamePlayerCooldown) {
+            return samePlayerKillRewardCooldownTicks * 50; // Convert ticks to ms
+        }
+
+        // Default cooldown
+        return killRewardCooldownSeconds * 1000L;
     }
 
-    public boolean isKillRewardOnCooldown(Player killer, Player victim) {
-        if (killer == null || victim == null || killRewardCooldownDays <= 0) return false;
+    /**
+     * Sets a kill reward cooldown for a specific killer-victim pair
+     *
+     * @param killer The player who killed another player
+     * @param victim The player who was killed
+     */
+    public void setKillRewardCooldown(Player killer, Player victim) {
+        if (killer == null || victim == null) return;
 
-        // Create the unique key for this killer-victim pair
-        String key = killer.getUniqueId() + ":" + victim.getUniqueId();
+        long currentTime = System.currentTimeMillis();
+        long expirationTime;
 
-        if (!killRewardCooldowns.containsKey(key)) {
-            return false;
+        // If global cooldown is enabled, apply to all victims
+        if (useGlobalPlayerCooldown) {
+            // Create a key that applies to all victims for this killer
+            String globalKey = killer.getUniqueId() + ":global";
+            expirationTime = currentTime + getKillRewardCooldownDuration(killer, false);
+            killRewardCooldowns.put(globalKey, expirationTime);
+            plugin.debug("Set global kill reward cooldown for " + killer.getName() + " until " + expirationTime);
         }
 
-        long cooldownEndTime = killRewardCooldowns.get(key);
+        // Always set specific player cooldown
+        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
+        expirationTime = currentTime + getKillRewardCooldownDuration(killer, true);
+        killRewardCooldowns.put(specificKey, expirationTime);
+        plugin.debug("Set specific kill reward cooldown for " + killer.getName() + " killing " + victim.getName() + " until " + expirationTime);
+    }
+
+    /**
+     * Checks if a player is on kill reward cooldown
+     *
+     * @param killer The player who killed another player
+     * @param victim The player who was killed
+     * @return True if the killer is on cooldown for the victim
+     */
+    public boolean isKillRewardOnCooldown(Player killer, Player victim) {
+        if (killer == null || victim == null) return false;
+
         long currentTime = System.currentTimeMillis();
 
-        if (currentTime > cooldownEndTime) {
-            killRewardCooldowns.remove(key);
+        // Check global cooldown first if enabled
+        if (useGlobalPlayerCooldown) {
+            String globalKey = killer.getUniqueId() + ":global";
+            if (killRewardCooldowns.containsKey(globalKey)) {
+                long cooldownEndTime = killRewardCooldowns.get(globalKey);
+                if (currentTime <= cooldownEndTime) {
+                    return true;
+                } else {
+                    // Clean up expired cooldown
+                    killRewardCooldowns.remove(globalKey);
+                }
+            }
+        }
+
+        // Check specific player cooldown
+        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
+        if (!killRewardCooldowns.containsKey(specificKey)) {
             return false;
         }
+
+        long cooldownEndTime = killRewardCooldowns.get(specificKey);
+        if (currentTime > cooldownEndTime) {
+            // Clean up expired cooldown
+            killRewardCooldowns.remove(specificKey);
+            return false;
+        }
+        plugin.debug("Kill reward cooldown for " + killer.getName() + " killing " + victim.getName() + " is active until " + cooldownEndTime);
 
         return true;
     }
 
+    /**
+     * Formats milliseconds into a human-readable time string
+     *
+     * @param timeMs Time in milliseconds
+     * @return Formatted time string (e.g., "2d 5h 30m 10s")
+     */
+    private String formatTimeRemaining(long timeMs) {
+        if (timeMs <= 0) return "0s";
+
+        long seconds = timeMs / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        long days = hours / 24;
+
+        seconds %= 60;
+        minutes %= 60;
+        hours %= 24;
+
+        StringBuilder result = new StringBuilder();
+        if (days > 0) result.append(days).append("d ");
+        if (hours > 0) result.append(hours).append("h ");
+        if (minutes > 0) result.append(minutes).append("m ");
+        if (seconds > 0 || result.length() == 0) result.append(seconds).append("s");
+
+        return result.toString().trim();
+    }
+
+    /**
+     * Gets the remaining kill reward cooldown for a killer-victim pair
+     *
+     * @param killer The player who killed another player
+     * @param victim The player who was killed
+     * @return Remaining cooldown time in milliseconds, or 0 if no cooldown
+     */
     public long getRemainingKillRewardCooldown(Player killer, Player victim) {
         if (killer == null || victim == null) return 0;
 
-        String key = killer.getUniqueId().toString() + ":" + victim.getUniqueId().toString();
-        if (!killRewardCooldowns.containsKey(key)) return 0;
-
-        long endTime = killRewardCooldowns.get(key);
         long currentTime = System.currentTimeMillis();
+        long remainingTime = 0;
 
-        // Return remaining time in days
-        return (long) Math.ceil(Math.max(0, (endTime - currentTime) / (24.0 * 60.0 * 60.0 * 1000.0)));
+        // Check global cooldown first if enabled
+        if (useGlobalPlayerCooldown) {
+            String globalKey = killer.getUniqueId() + ":global";
+            if (killRewardCooldowns.containsKey(globalKey)) {
+                long cooldownEndTime = killRewardCooldowns.get(globalKey);
+                if (currentTime <= cooldownEndTime) {
+                    remainingTime = Math.max(remainingTime, cooldownEndTime - currentTime);
+                }
+            }
+        }
+
+        // Check specific player cooldown
+        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
+        if (killRewardCooldowns.containsKey(specificKey)) {
+            long cooldownEndTime = killRewardCooldowns.get(specificKey);
+            if (currentTime <= cooldownEndTime) {
+                remainingTime = Math.max(remainingTime, cooldownEndTime - currentTime);
+            }
+        }
+
+        return remainingTime;
     }
 
-    public boolean canFlyInCombat(Player player) {
-        if (player == null) return true;
-
-        // If player has permission to fly in combat, allow it
-        if (player.hasPermission("celestcombat.combat.fly")) {
-            return true;
+    /**
+     * Formats remaining kill reward cooldown time for a killer-victim pair
+     *
+     * @param killer The player who killed another player
+     * @param victim The player who was killed
+     * @return Formatted time string, or "None" if no cooldown
+     */
+    public String getFormattedKillRewardCooldown(Player killer, Player victim) {
+        long remainingMs = getRemainingKillRewardCooldown(killer, victim);
+        if (remainingMs <= 0) {
+            return "None";
         }
+        return formatTimeRemaining(remainingMs);
+    }
 
-        // If flight in combat is allowed in config or player isn't in combat, allow flight
+    /**
+     * Clears all kill reward cooldowns for a specific player
+     *
+     * @param player The player to clear cooldowns for
+     */
+    public void clearKillRewardCooldowns(Player player) {
+        if (player == null) return;
+
+        UUID playerUUID = player.getUniqueId();
+        killRewardCooldowns.entrySet().removeIf(entry ->
+                entry.getKey().startsWith(playerUUID.toString() + ":"));
+    }
+
+    public boolean shouldDisableFlight(Player player) {
+        if (player == null) return false;
+
+        // If flight is enabled in combat by config or player isn't in combat, don't disable flight
         if (!disableFlightInCombat || !isInCombat(player)) {
-            return true;
+            return false;
         }
 
-        player.setFlying(false);
-
-        // Notify the player
+        // Flight should be disabled - notify the player
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("player", player.getName());
         plugin.getMessageService().sendMessage(player, "combat_fly_disabled", placeholders);
 
-        return false;
+        return true;
     }
 
     public void shutdown() {
@@ -473,6 +663,12 @@ public class CombatManager {
         if (globalCountdownTask != null) {
             globalCountdownTask.cancel();
             globalCountdownTask = null;
+        }
+
+        // Cancel the cleanup task
+        if (cleanupTask != null) {
+            cleanupTask.cancel();
+            cleanupTask = null;
         }
 
         // Cancel all individual tasks

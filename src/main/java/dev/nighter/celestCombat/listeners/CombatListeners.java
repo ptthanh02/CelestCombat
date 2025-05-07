@@ -2,6 +2,7 @@ package dev.nighter.celestCombat.listeners;
 
 import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.combat.CombatManager;
+import dev.nighter.celestCombat.language.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -24,10 +25,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-@RequiredArgsConstructor
 public class CombatListeners implements Listener {
     private final CelestCombat plugin;
     private final CombatManager combatManager;
+    private final MessageService messageService;
     private final Map<UUID, Boolean> playerLoggedOutInCombat = new ConcurrentHashMap<>();
     // Add a map to track the last damage source for each player
     private final Map<UUID, UUID> lastDamageSource = new ConcurrentHashMap<>();
@@ -35,6 +36,12 @@ public class CombatListeners implements Listener {
     private final Map<UUID, Long> lastDamageTime = new ConcurrentHashMap<>();
     // Cleanup threshold (5 minutes)
     private static final long DAMAGE_RECORD_CLEANUP_THRESHOLD = TimeUnit.MINUTES.toMillis(5);
+
+    public CombatListeners(CelestCombat plugin) {
+        this.plugin = plugin;
+        this.combatManager = plugin.getCombatManager();
+        this.messageService = plugin.getMessageService();
+    }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
@@ -213,18 +220,8 @@ public class CombatListeners implements Listener {
             return;
         }
 
-        // Check if on cooldown
-        if (combatManager.isKillRewardOnCooldown(killer, victim)) {
-            // If on cooldown, either skip silently or notify the killer
-            if (plugin.getConfig().getBoolean("kill_rewards.cooldown.notify", false)) {
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("killer", killer.getName());
-                placeholders.put("victim", victim.getName());
-                placeholders.put("days", String.valueOf(combatManager.getRemainingKillRewardCooldown(killer, victim)));
-                plugin.getMessageService().sendMessage(killer, "kill_reward_on_cooldown", placeholders);
-            }
-            return;
-        }
+        // Flag to track if at least one command executed successfully
+        boolean anyCommandSuccessful = false;
 
         // Execute reward commands
         List<String> commands = plugin.getConfig().getStringList("kill_rewards.commands");
@@ -240,6 +237,8 @@ public class CombatListeners implements Listener {
                         plugin.getServer().getConsoleSender(),
                         finalCommand
                 );
+                // If we reached here, the command executed without throwing an exception
+                anyCommandSuccessful = true;
             } catch (Exception e) {
                 // Log the error
                 plugin.getLogger().warning("Failed to execute kill reward command: " + finalCommand);
@@ -250,11 +249,13 @@ public class CombatListeners implements Listener {
         // Set the cooldown after giving rewards
         combatManager.setKillRewardCooldown(killer, victim);
 
-        // Notify the killer about rewards
-        Map<String, String> placeholders = new HashMap<>();
-        placeholders.put("killer", killer.getName());
-        placeholders.put("victim", victim.getName());
-        plugin.getMessageService().sendMessage(killer, "kill_reward_received", placeholders);
+        // Only notify the killer about rewards if at least one command succeeded
+        if (anyCommandSuccessful) {
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("killer", killer.getName());
+            placeholders.put("victim", victim.getName());
+            messageService.sendMessage(killer, "kill_reward_received", placeholders);
+        }
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -307,8 +308,7 @@ public class CombatListeners implements Listener {
         Player player = event.getPlayer();
 
         // If player is trying to enable flight
-        // Check if they're allowed to fly in combat
-        if (!plugin.getCombatManager().canFlyInCombat(player)) {
+        if (event.isFlying() && combatManager.shouldDisableFlight(player)) {
             event.setCancelled(true);
         }
     }

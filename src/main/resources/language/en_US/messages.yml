@@ -49,10 +49,6 @@ kill_reward_received:
   action_bar: "&#8A2BE2+★10 &#FFFFFFfor killing %victim%"
   sound: entity.player.levelup
 
-kill_reward_on_cooldown:
-  message: "&#F39C12You recently killed %victim%! &cWait &#FFFFFF%days% days &cfor the next reward."
-  sound: block.note_block.pling
-
 # ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------

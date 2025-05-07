@@ -25,6 +25,6 @@ permissions:
   celestcombat.update.notify:
     description: Allows players to receive update notifications
     default: op
-  celestcombat.combat.fly:
-    description: Allows players to fly while in combat
-    default: op
+  celestcombat.bypass.tag:
+    description: Allows players to bypass being tagged in combat
+    default: false
