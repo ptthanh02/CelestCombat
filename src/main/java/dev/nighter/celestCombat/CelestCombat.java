@@ -7,7 +7,6 @@ import dev.nighter.celestCombat.combat.DeathAnimationManager;
 import dev.nighter.celestCombat.commands.CombatCommand;
 import dev.nighter.celestCombat.configs.TimeFormatter;
 import dev.nighter.celestCombat.language.LanguageManager;
-import dev.nighter.celestCombat.language.GuiService;
 import dev.nighter.celestCombat.language.MessageService;
 import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
@@ -28,13 +27,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class CelestCombat extends JavaPlugin {
     @Getter
     private static CelestCombat instance;
+    private final boolean debugMode = getConfig().getBoolean("debug", false);
     private LanguageManager languageManager;
     private MessageService messageService;
     private UpdateChecker updateChecker;
     private ConfigUpdater configUpdater;
     private LanguageUpdater languageUpdater;
     private TimeFormatter timeFormatter;
-    private GuiService guiService;
     private CombatManager combatManager;
     private CombatListeners combatListeners;
     private EnderPearlListener enderPearlListener;
@@ -58,12 +57,12 @@ public final class CelestCombat extends JavaPlugin {
         // Initialize language manager
         languageManager = new LanguageManager(this,
                 LanguageManager.LanguageFileType.MESSAGES);
-        languageUpdater = new LanguageUpdater(this);
+        languageUpdater = new LanguageUpdater(this,
+                LanguageUpdater.LanguageFileType.MESSAGES);
         languageUpdater.checkAndUpdateLanguageFiles();
 
         // Initialize services
         messageService = new MessageService(this, languageManager);
-        guiService = new GuiService(this, languageManager);
         updateChecker = new UpdateChecker(this);
         configUpdater = new ConfigUpdater(this);
         configUpdater.checkAndUpdateConfig();
@@ -162,6 +161,12 @@ public final class CelestCombat extends JavaPlugin {
     public void refreshTimeCache() {
         if (timeFormatter != null) {
             timeFormatter.clearCache();
+        }
+    }
+
+    public void debug(String message) {
+        if (debugMode) {
+            getLogger().info("[DEBUG] " + message);
         }
     }
 }

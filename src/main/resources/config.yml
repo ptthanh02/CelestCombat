@@ -8,11 +8,10 @@
 # 3. Modify messages.yml as needed
 # 4. Set language to your custom folder name
 
-# ⚠️ WARNING: DO NOT modify the default language files (en_US, vi_VN) directly!
-# These files will be overwritten with each plugin update.
-# Always create a new custom language folder instead.
-
 language: en_US
+
+# Enable or disable debug mode (provides verbose console output)
+debug: false
 
 #---------------------------------------------------
 #              CORE COMBAT SETTINGS
@@ -116,14 +115,5 @@ kill_rewards:
 # WorldGuard's barrier for no-pvp regions
 safezone_barrier:
   # Enable/disable WorldGuard integration for safezone barriers
+  # This will prevent players from entering safezones while in combat
   enabled: true
-
-  # Barrier duration
-  duration: 3s
-
-  # Barrier block type
-  block: RED_STAINED_GLASS_PANE
-
-  # Barrier dimensions
-  height: 4
-  width: 8

@@ -1,9 +1,10 @@
 package dev.nighter.celestCombat.updates;
 
+import dev.nighter.celestCombat.CelestCombat;
+
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -13,10 +14,10 @@ import java.util.*;
 
 public class ConfigUpdater {
     private final String currentVersion;
-    private final JavaPlugin plugin;
+    private final CelestCombat plugin;
     private static final String CONFIG_VERSION_KEY = "config_version";
 
-    public ConfigUpdater(JavaPlugin plugin) {
+    public ConfigUpdater(CelestCombat plugin) {
         this.plugin = plugin;
         this.currentVersion = plugin.getDescription().getVersion();
     }
@@ -42,9 +43,7 @@ public class ConfigUpdater {
             return;
         }
 
-        if (!configVersionStr.equals("0.0.0")) {
-            plugin.getLogger().info("Updating config from version " + configVersionStr + " to " + currentVersion);
-        }
+        plugin.debug("Updating config from version " + configVersionStr + " to " + currentVersion);
 
         try {
             Map<String, Object> userValues = flattenConfig(currentConfig);
@@ -64,9 +63,7 @@ public class ConfigUpdater {
                 Files.copy(configFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 plugin.getLogger().info("Config backup created at " + backupFile.getName());
             } else {
-                if (!configVersionStr.equals("0.0.0")) {
-                    plugin.getLogger().info("No significant config changes detected, skipping backup creation");
-                }
+                plugin.debug("No significant config changes detected, skipping backup creation");
             }
 
             // Apply user values and save

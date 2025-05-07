@@ -24,28 +24,48 @@ import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class WorldGuardHook implements Listener {
+public class WorldGuardHookBarrierV1 implements Listener {
     private final CelestCombat plugin;
     private final CombatManager combatManager;
     private final Map<UUID, Long> lastMessageTime = new HashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
+
+    // For barrier feature
+    private final Map<UUID, Set<Location>> activeBarriers = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastBarrierTime = new ConcurrentHashMap<>();
+    private final long BARRIER_COOLDOWN = 1000; // 1 second cooldown between barriers
+    private long BARRIER_DURATION_TICKS;
+    private int BARRIER_HEIGHT;
+    private int BARRIER_WIDTH;
+    private Material BARRIER_MATERIAL;
 
     // Track ender pearls from combat players
     private final Map<UUID, UUID> combatPlayerPearls = new ConcurrentHashMap<>();
     // Track player locations when they throw ender pearls
     private final Map<UUID, Location> pearlThrowLocations = new ConcurrentHashMap<>();
 
-    public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
+    public WorldGuardHookBarrierV1(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
         this.combatManager = combatManager;
+
+        // Get barrier configuration
+        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "3s");
+        this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 8);
+        this.BARRIER_WIDTH = plugin.getConfig().getInt("safezone_barrier.width", 5);
+        this.BARRIER_MATERIAL = Material.getMaterial(plugin.getConfig().getString("safezone_barrier.block", "RED_STAINED_GLASS_PANE").toUpperCase());
     }
 
     public void reloadConfig() {
-        // Configuration would be reloaded here when needed
+        // Reload barrier configuration
+        this.BARRIER_DURATION_TICKS = plugin.getTimeFromConfig("safezone_barrier.duration", "3s");
+        this.BARRIER_HEIGHT = plugin.getConfig().getInt("safezone_barrier.height", 8);
+        this.BARRIER_WIDTH = plugin.getConfig().getInt("safezone_barrier.width", 5);
+        this.BARRIER_MATERIAL = Material.getMaterial(plugin.getConfig().getString("safezone_barrier.block", "RED_STAINED_GLASS_PANE").toUpperCase());
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -189,13 +209,122 @@ public class WorldGuardHook implements Listener {
 
         // If trying to enter a safezone while in combat
         if (!fromSafe && toSafe) {
-            // Cancel the movement
+            // Calculate border points and create barrier
+            List<Location> borderPoints = findRegionBorderPoints(from, to);
+            if (!borderPoints.isEmpty()) {
+                createBarrierAtPoints(player, borderPoints);
+            }
+
+            // Cancel the movement without pushing the player back
             event.setCancelled(true);
 
             // Send message
             sendCooldownMessage(player, "combat_no_safezone_entry");
         }
     }
+
+    private List<Location> findRegionBorderPoints(Location from, Location to) {
+        List<Location> borderPoints = new ArrayList<>();
+
+        // Get direction vector from from to to
+        Vector direction = to.toVector().subtract(from.toVector()).normalize();
+
+        // Parameters for our ray casting
+        double step = 0.25; // Step size in blocks
+        double maxDistance = from.distance(to) + 2.0; // Slightly farther than the distance
+
+        Location current = from.clone();
+        boolean lastPointSafe = isSafeZone(current);
+
+        // Cast ray from from to beyond to
+        for (double distance = 0; distance <= maxDistance; distance += step) {
+            current = from.clone().add(direction.clone().multiply(distance));
+            boolean currentPointSafe = isSafeZone(current);
+
+            // If we cross a boundary, add this point
+            if (currentPointSafe != lastPointSafe) {
+                borderPoints.add(current.clone());
+                lastPointSafe = currentPointSafe;
+            }
+        }
+
+        return borderPoints;
+    }
+
+    private void createBarrierAtPoints(Player player, List<Location> borderPoints) {
+        UUID playerUUID = player.getUniqueId();
+
+        // Check cooldown to prevent spam
+        long currentTime = System.currentTimeMillis();
+        if (lastBarrierTime.containsKey(playerUUID) &&
+                currentTime - lastBarrierTime.get(playerUUID) < BARRIER_COOLDOWN) {
+            return;
+        }
+
+        // Update cooldown
+        lastBarrierTime.put(playerUUID, currentTime);
+
+        // Create set to track blocks in this barrier
+        Set<Location> barrierBlocks = new HashSet<>();
+
+        for (Location borderPoint : borderPoints) {
+            // For each border point, we need to create part of the barrier
+
+            // Get direction from player to border point
+            Vector dirToPlayer = player.getLocation().toVector().subtract(borderPoint.toVector()).normalize();
+
+            // Create vector perpendicular to the direction and Y-axis (for width)
+            Vector perpendicular = new Vector(-dirToPlayer.getZ(), 0, dirToPlayer.getX()).normalize();
+
+            // Create wall at the border perpendicular to player's approach
+            for (int y = 0; y < BARRIER_HEIGHT; y++) {
+                for (int i = -BARRIER_WIDTH / 2; i <= BARRIER_WIDTH / 2; i++) {
+                    Location blockLoc = borderPoint.clone().add(perpendicular.clone().multiply(i)).add(0, y, 0);
+                    Block block = blockLoc.getBlock();
+
+                    // Only replace air and non-solid blocks
+                    if (block.getType() == Material.AIR || !block.getType().isSolid()) {
+                        // Save original state
+                        barrierBlocks.add(blockLoc.clone());
+
+                        // Change block safely using Bukkit scheduler
+                        Scheduler.runLocationTask(blockLoc, () -> {
+                            block.setType(BARRIER_MATERIAL);
+                        });
+                    }
+                }
+            }
+        }
+
+        // Store this barrier for the player
+        activeBarriers.computeIfAbsent(playerUUID, k -> new HashSet<>()).addAll(barrierBlocks);
+
+        // Schedule barrier removal
+        Scheduler.runTaskLater(() -> {
+            removeBarrier(playerUUID, barrierBlocks);
+        }, BARRIER_DURATION_TICKS);
+    }
+
+    private void removeBarrier(UUID playerUUID, Set<Location> barrierBlocks) {
+        // Remove each block in the barrier
+        for (Location loc : barrierBlocks) {
+            Scheduler.runLocationTask(loc, () -> {
+                Block block = loc.getBlock();
+                if (block.getType() == BARRIER_MATERIAL) {
+                    block.setType(Material.AIR);
+                }
+            });
+        }
+
+        // Remove from tracking
+        if (activeBarriers.containsKey(playerUUID)) {
+            activeBarriers.get(playerUUID).removeAll(barrierBlocks);
+            if (activeBarriers.get(playerUUID).isEmpty()) {
+                activeBarriers.remove(playerUUID);
+            }
+        }
+    }
+
     private boolean isSafeZone(Location location) {
         return isInAnyRegion(location) && !isPvPAllowed(location);
     }
@@ -318,5 +447,19 @@ public class WorldGuardHook implements Listener {
         placeholders.put("player", player.getName());
         placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
         plugin.getMessageService().sendMessage(player, messageKey, placeholders);
+    }
+
+    public void removeAllBarriers(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        if (activeBarriers.containsKey(playerUUID)) {
+            Set<Location> barriers = activeBarriers.get(playerUUID);
+            for (Location loc : barriers) {
+                Block block = loc.getBlock();
+                if (block.getType() == BARRIER_MATERIAL) {
+                    block.setType(Material.AIR);
+                }
+            }
+            activeBarriers.remove(playerUUID);
+        }
     }
 }

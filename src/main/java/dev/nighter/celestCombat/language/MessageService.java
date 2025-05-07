@@ -1,70 +1,176 @@
 package dev.nighter.celestCombat.language;
 
-import dev.nighter.celestCombat.CelestCombat;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
-import org.bukkit.Sound;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class MessageService {
-    private final CelestCombat plugin;
+    private final JavaPlugin plugin;
     private final LanguageManager languageManager;
 
+    // Static empty map to avoid creating new HashMap instances
+    private static final Map<String, String> EMPTY_PLACEHOLDERS = Collections.emptyMap();
+
+    // Cache for key existence checks to reduce repeated lookups
+    private final Map<String, Boolean> keyExistsCache = new ConcurrentHashMap<>(128);
+
+    /**
+     * Sends a message to a CommandSender with no placeholders
+     * @param sender The command sender to receive the message
+     * @param key The message key
+     */
     public void sendMessage(CommandSender sender, String key) {
-        sendMessage(sender, key, new HashMap<>());
+        // Use shared empty map instead of creating a new HashMap
+        sendMessage(sender, key, EMPTY_PLACEHOLDERS);
     }
 
-    // Keep the original method for backward compatibility
+    /**
+     * Sends a message to a Player with no placeholders
+     * @param player The player to receive the message
+     * @param key The message key
+     */
+    public void sendMessage(Player player, String key) {
+        // Use shared empty map instead of creating a new HashMap
+        sendMessage(player, key, EMPTY_PLACEHOLDERS);
+    }
+
+    /**
+     * Sends a message to a Player with placeholders
+     * @param player The player to receive the message
+     * @param key The message key
+     * @param placeholders Map of placeholders to replace in the message
+     */
     public void sendMessage(Player player, String key, Map<String, String> placeholders) {
+        // Use the CommandSender version but with player-specific features
         sendMessage((CommandSender) player, key, placeholders);
     }
 
+    /**
+     * Sends a message to a CommandSender with placeholders
+     * @param sender The command sender to receive the message
+     * @param key The message key
+     * @param placeholders Map of placeholders to replace in the message
+     */
     public void sendMessage(CommandSender sender, String key, Map<String, String> placeholders) {
-        String locale = languageManager.getDefaultLocale();
-
-        if (!languageManager.keyExists(key, locale)) {
-            plugin.getLogger().warning("Message " + key + " doesn't exist in the language file.");
-            sender.sendMessage("§8[§9CelestCombat§8]§c Message " + key + " doesn't exist in the language file.");
+        // Validate the message key exists (using cache to avoid lookups)
+        if (!checkKeyExists(key)) {
+            plugin.getLogger().warning("Message key not found: " + key);
+            sender.sendMessage("§cMissing message key: " + key);
             return;
         }
 
-        // Chat message - only send if message exists
-        String message = languageManager.getMessage(key, locale, placeholders);
+        // Get and send the chat message if it exists
+        String message = languageManager.getMessage(key, placeholders);
         if (message != null && !message.startsWith("Missing message:")) {
             sender.sendMessage(message);
         }
 
-        // Additional player-specific features only if sender is a Player
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
+        // Process player-specific features
+        if (sender instanceof Player player) {
+            sendPlayerSpecificContent(player, key, placeholders);
+        }
+    }
 
-            // Title and subtitle - only show if at least one exists
-            String title = languageManager.getTitle(key, locale, placeholders);
-            String subtitle = languageManager.getSubtitle(key, locale, placeholders);
-            if (title != null || subtitle != null) {
-                player.sendTitle(title != null ? title : "", subtitle != null ? subtitle : "", 10, 70, 20);
-            }
+    /**
+     * Check if a key exists, using cache for efficiency
+     * @param key The message key to check
+     * @return true if the key exists, false otherwise
+     */
+    private boolean checkKeyExists(String key) {
+        return keyExistsCache.computeIfAbsent(key, languageManager::keyExists);
+    }
 
-            // Action bar - only show if exists
-            String actionBar = languageManager.getActionBar(key, locale, placeholders);
-            if (actionBar != null) {
-                player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
-                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText(actionBar));
-            }
+    /**
+     * Clear the key existence cache (used during reloads)
+     */
+    public void clearKeyExistsCache() {
+        keyExistsCache.clear();
+    }
 
-            // Sound - only play if exists
-            String soundName = languageManager.getSound(key, locale);
-            if (soundName != null) {
-                player.playSound(player.getLocation(), soundName , 1.0f, 1.0f);
+    /**
+     * Sends a message to the console with no placeholders
+     * @param key The message key
+     */
+    public void sendConsoleMessage(String key) {
+        sendConsoleMessage(key, EMPTY_PLACEHOLDERS);
+    }
+
+    /**
+     * Sends a message to the console with placeholders
+     * @param key The message key
+     * @param placeholders Map of placeholders to replace in the message
+     */
+    public void sendConsoleMessage(String key, Map<String, String> placeholders) {
+        // Validate the message key exists
+        if (!languageManager.keyExists(key)) {
+            plugin.getLogger().warning("Message key not found: " + key);
+            plugin.getLogger().warning("§cMissing message key: " + key);
+            return;
+        }
+
+        // Get the raw message without prefix for console formatting
+        String message = languageManager.getRawMessage(key, placeholders);
+        if (message != null && !message.startsWith("Missing message:")) {
+            // Strip color codes for console
+            String consoleMessage = stripColorCodes(message);
+            plugin.getLogger().info(consoleMessage);
+        }
+    }
+
+    /**
+     * Strips color codes from a message for console output
+     * @param message The message with color codes
+     * @return The message without color codes
+     */
+    private String stripColorCodes(String message) {
+        // Remove standard color codes (§) and RGB hex codes
+        return message.replaceAll("§[0-9a-fA-Fk-oK-OrR]", "")
+                .replaceAll("&#[0-9a-fA-F]{6}", "")
+                .replaceAll("&[0-9a-fA-Fk-oK-OrR]", "");
+    }
+
+    /**
+     * Handles player-specific message components (title, subtitle, action bar, sound)
+     * @param player The player to receive the content
+     * @param key The message key
+     * @param placeholders Map of placeholders to replace in the content
+     */
+    private void sendPlayerSpecificContent(Player player, String key, Map<String, String> placeholders) {
+        // Title and subtitle
+        String title = languageManager.getTitle(key, placeholders);
+        String subtitle = languageManager.getSubtitle(key, placeholders);
+        if (title != null || subtitle != null) {
+            player.sendTitle(
+                    title != null ? title : "",
+                    subtitle != null ? subtitle : "",
+                    10, 70, 20
+            );
+        }
+
+        // Action bar
+        String actionBar = languageManager.getActionBar(key, placeholders);
+        if (actionBar != null) {
+            player.spigot().sendMessage(
+                    ChatMessageType.ACTION_BAR,
+                    TextComponent.fromLegacyText(actionBar)
+            );
+        }
+
+        // Sound
+        String soundName = languageManager.getSound(key);
+        if (soundName != null) {
+            try {
+                player.playSound(player.getLocation(), soundName, 1.0f, 1.0f);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Invalid sound name for key " + key + ": " + soundName);
             }
         }
     }
