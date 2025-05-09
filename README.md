@@ -1,6 +1,6 @@
 # CelestCombat
 
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/ptthanh02/CelestCombat)
+[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/ptthanh02/CelestCombat)
 [![API](https://img.shields.io/badge/API-1.21-green.svg)](https://www.spigotmc.org/)
 [![Folia](https://img.shields.io/badge/Folia-supported-brightgreen.svg)](https://github.com/PaperMC/Folia)
 [![bStats](https://img.shields.io/bstats/servers/25387)](https://bstats.org/plugin/bukkit/CelestCombat/25387)

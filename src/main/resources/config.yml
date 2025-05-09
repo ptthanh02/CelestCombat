@@ -25,7 +25,25 @@ combat:
   # Combat tag duration
   duration: 20s
 
-  # Commands blocked during combat
+  # Command blocking mode: "blacklist" or "whitelist"
+  # whitelist - blocks all commands EXCEPT those listed in 'allowed_commands'
+  # blacklist - blocks only commands listed in 'blocked_commands'
+  command_block_mode: "whitelist"
+
+  # Commands allowed during combat (used in whitelist mode)
+  allowed_commands:
+    - "msg"
+    - "r"
+    - "reply"
+    - "tell"
+    - "w"
+    - "whisper"
+    - "shop"
+    - "buy"
+    - "sell"
+    - "ah"
+
+  # Commands blocked during combat (used in blacklist mode)
   blocked_commands:
     - "logout"
     - "tpa"

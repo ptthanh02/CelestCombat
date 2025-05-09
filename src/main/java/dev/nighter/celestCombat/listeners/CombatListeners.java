@@ -3,7 +3,6 @@ package dev.nighter.celestCombat.listeners;
 import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.combat.CombatManager;
 import dev.nighter.celestCombat.language.MessageService;
-import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -284,21 +283,47 @@ public class CombatListeners implements Listener {
 
         if (combatManager.isInCombat(player)) {
             String command = event.getMessage().split(" ")[0].toLowerCase().substring(1);
-            List<String> blockedCommands = plugin.getConfig().getStringList("combat.blocked_commands");
 
-            for (String blockedCmd : blockedCommands) {
-                if (command.equalsIgnoreCase(blockedCmd) ||
-                        (blockedCmd.endsWith("*") && command.startsWith(blockedCmd.substring(0, blockedCmd.length() - 1)))) {
-                    event.setCancelled(true);
+            // Get command blocking mode from config
+            String blockMode = plugin.getConfig().getString("combat.command_block_mode", "whitelist").toLowerCase();
 
-                    Map<String, String> placeholders = new HashMap<>();
-                    placeholders.put("player", player.getName());
-                    placeholders.put("command", command);
-                    placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
-                    plugin.getMessageService().sendMessage(player, "command_blocked_in_combat", placeholders);
+            // Determine if the command should be blocked based on the mode
+            boolean shouldBlock = false;
 
-                    break;
+            if ("blacklist".equalsIgnoreCase(blockMode)) {
+                // Blacklist mode - block commands in the list
+                List<String> blockedCommands = plugin.getConfig().getStringList("combat.blocked_commands");
+
+                for (String blockedCmd : blockedCommands) {
+                    if (command.equalsIgnoreCase(blockedCmd) ||
+                            (blockedCmd.endsWith("*") && command.startsWith(blockedCmd.substring(0, blockedCmd.length() - 1)))) {
+                        shouldBlock = true;
+                        break;
+                    }
                 }
+            } else {
+                // Whitelist mode - allow only commands in the list
+                List<String> allowedCommands = plugin.getConfig().getStringList("combat.allowed_commands");
+                shouldBlock = true; // Block by default
+
+                for (String allowedCmd : allowedCommands) {
+                    if (command.equalsIgnoreCase(allowedCmd) ||
+                            (allowedCmd.endsWith("*") && command.startsWith(allowedCmd.substring(0, allowedCmd.length() - 1)))) {
+                        shouldBlock = false; // Command is allowed
+                        break;
+                    }
+                }
+            }
+
+            // Block the command if necessary
+            if (shouldBlock) {
+                event.setCancelled(true);
+
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("player", player.getName());
+                placeholders.put("command", command);
+                placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
+                plugin.getMessageService().sendMessage(player, "command_blocked_in_combat", placeholders);
             }
         }
     }
