@@ -150,7 +150,11 @@ kill_rewards:
 #              WORLDGUARD INTEGRATION
 #---------------------------------------------------
 # WorldGuard's barrier for no-pvp regions
-safezone_barrier:
+safezone_protection:
   # Enable/disable WorldGuard integration for safezone barriers
   # This will prevent players from entering safezones while in combat
   enabled: true
+
+  # Push force controls how strongly players are knocked back when trying to enter a safezone
+  # Higher values will push players further away from the safezone border
+  push_force: 1.5

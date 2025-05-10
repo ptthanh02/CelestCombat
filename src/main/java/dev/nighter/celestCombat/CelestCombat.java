@@ -85,7 +85,7 @@ public final class CelestCombat extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
         // Register WorldGuard hook if available
-        if (hasWorldGuard && getConfig().getBoolean("safezone_barrier.enabled", true)) {
+        if (hasWorldGuard && getConfig().getBoolean("safezone_protection.enabled", true)) {
             // Create a single instance of WorldGuardHook to avoid duplicate listeners
             worldGuardHook = new WorldGuardHook(this, combatManager);
             getServer().getPluginManager().registerEvents(worldGuardHook, this);
@@ -125,9 +125,9 @@ public final class CelestCombat extends JavaPlugin {
         }
 
         // Shutdown WorldGuardHook properly
-        if (worldGuardHook != null) {
-            worldGuardHook.shutdown();
-        }
+//        if (worldGuardHook != null) {
+//            worldGuardHook.shutdown();
+//        }
 
         getLogger().info("CelestCombat has been disabled!");
     }

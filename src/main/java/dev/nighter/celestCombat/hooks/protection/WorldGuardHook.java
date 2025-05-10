@@ -15,7 +15,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EnderPearl;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -24,8 +23,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,102 +33,28 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WorldGuardHook implements Listener {
     private final CelestCombat plugin;
     private final CombatManager combatManager;
-    private final Map<UUID, Long> lastMessageTime = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastMessageTime = new HashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
 
     // Track ender pearls from combat players
     private final Map<UUID, UUID> combatPlayerPearls = new ConcurrentHashMap<>();
     // Track player locations when they throw ender pearls
     private final Map<UUID, Location> pearlThrowLocations = new ConcurrentHashMap<>();
-    // Track when pearls were thrown (for cleanup)
-    private final Map<UUID, Long> pearlThrowTimes = new ConcurrentHashMap<>();
 
-    // Cleanup task
-    private Scheduler.Task cleanupTask;
-    private static final long CLEANUP_INTERVAL = 60 * 20; // Run cleanup every minute (in ticks)
-    private static final long PEARL_LIFETIME = 30 * 1000; // Consider pearls older than 30 seconds as expired
+    // Configurable push-back strength
+    private double pushForce;
 
     public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
         this.combatManager = combatManager;
 
-        // Schedule regular cleanup
-        startCleanupTask();
+        // Load push force from config
+        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 1.5);
     }
 
-    /**
-     * Starts the periodic cleanup task
-     */
-    private void startCleanupTask() {
-        // Cancel any existing task first
-        if (cleanupTask != null && !cleanupTask.isCancelled()) {
-            cleanupTask.cancel();
-        }
-
-        // Schedule a new cleanup task
-        cleanupTask = Scheduler.runTaskTimerAsync(() -> {
-            cleanupExpiredData();
-            plugin.debug("WorldGuardHook cleanup task executed");
-        }, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
-    }
-
-    /**
-     * Cleans up expired entries from all tracking maps
-     */
-    public void cleanupExpiredData() {
-        long currentTime = System.currentTimeMillis();
-
-        // Clean message cooldowns (keep entries for 5x the cooldown period)
-        lastMessageTime.entrySet().removeIf(entry ->
-                currentTime - entry.getValue() > MESSAGE_COOLDOWN * 5);
-
-        // Clean pearl throw locations for players who are no longer in combat
-        for (Iterator<Map.Entry<UUID, Location>> it = pearlThrowLocations.entrySet().iterator(); it.hasNext();) {
-            Map.Entry<UUID, Location> entry = it.next();
-            Player player = plugin.getServer().getPlayer(entry.getKey());
-            if (player == null || !player.isOnline() || !combatManager.isInCombat(player)) {
-                it.remove();
-            }
-        }
-
-        // Clean pearl throw times for expired pearls
-        Set<UUID> expiredPearls = new HashSet<>();
-        for (Map.Entry<UUID, Long> entry : pearlThrowTimes.entrySet()) {
-            if (currentTime - entry.getValue() > PEARL_LIFETIME) {
-                expiredPearls.add(entry.getKey());
-            }
-        }
-
-        // Remove expired pearls from all tracking maps
-        for (UUID pearlId : expiredPearls) {
-            pearlThrowTimes.remove(pearlId);
-            combatPlayerPearls.remove(pearlId);
-        }
-
-        plugin.debug("Cleaned up " + expiredPearls.size() + " expired pearls. Remaining tracked pearls: " + combatPlayerPearls.size());
-    }
-
-    /**
-     * Reload configuration
-     */
     public void reloadConfig() {
-        // Configuration would be reloaded here when needed
-    }
-
-    /**
-     * Handle player quit events to clean up data
-     */
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        UUID playerUUID = player.getUniqueId();
-
-        // Clean up all maps
-        lastMessageTime.remove(playerUUID);
-        pearlThrowLocations.remove(playerUUID);
-
-        // Clean any pearls belonging to this player
-        combatPlayerPearls.entrySet().removeIf(entry -> entry.getValue().equals(playerUUID));
+        // Reload push force from config
+        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 1.5);
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -150,19 +76,11 @@ public class WorldGuardHook implements Listener {
 
         // Track pearls from players in combat
         if (combatManager.isInCombat(player)) {
-            UUID projectileId = projectile.getUniqueId();
-            UUID playerUUID = player.getUniqueId();
-
             // Store projectile ID with player ID
-            combatPlayerPearls.put(projectileId, playerUUID);
+            combatPlayerPearls.put(projectile.getUniqueId(), player.getUniqueId());
 
             // Store the player's location when they throw the pearl
-            pearlThrowLocations.put(playerUUID, player.getLocation().clone());
-
-            // Store the time when the pearl was thrown (for cleanup)
-            pearlThrowTimes.put(projectileId, System.currentTimeMillis());
-
-            // plugin.debug("Tracking combat pearl " + projectileId + " from player " + player.getName());
+            pearlThrowLocations.put(player.getUniqueId(), player.getLocation().clone());
         }
     }
 
@@ -187,7 +105,6 @@ public class WorldGuardHook implements Listener {
 
         // Clean up tracking for this projectile
         combatPlayerPearls.remove(projectileId);
-        pearlThrowTimes.remove(projectileId);
 
         // Check pearl destination by using the future teleport location
         Location teleportDestination = null;
@@ -221,9 +138,6 @@ public class WorldGuardHook implements Listener {
             if (player != null && player.isOnline() && pearlThrowLocations.containsKey(playerUUID)) {
                 Location originalLocation = pearlThrowLocations.get(playerUUID);
 
-                // Remove throw location as we're handling this pearl now
-                pearlThrowLocations.remove(playerUUID);
-
                 // Delay the teleport to ensure it happens after the pearl event is processed
                 Scheduler.runTaskLater(() -> {
                     player.teleportAsync(originalLocation).thenAccept(success -> {
@@ -249,10 +163,10 @@ public class WorldGuardHook implements Listener {
             else if (player != null && player.isOnline()) {
                 sendCooldownMessage(player, "combat_no_pearl_safezone");
             }
-        } else {
-            // If successful teleport to non-safezone, clean up location
-            pearlThrowLocations.remove(playerUUID);
         }
+
+        // Always clean up the saved location
+        pearlThrowLocations.remove(playerUUID);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -284,12 +198,79 @@ public class WorldGuardHook implements Listener {
 
         // If trying to enter a safezone while in combat
         if (!fromSafe && toSafe) {
-            // Cancel the movement
-            event.setCancelled(true);
+            // Push player back instead of cancelling the event
+            pushPlayerBack(player, from, to);
 
             // Send message
             sendCooldownMessage(player, "combat_no_safezone_entry");
         }
+    }
+
+    /**
+     * Pushes a player back away from a safe zone border
+     * @param player The player to push back
+     * @param from The player's original location
+     * @param to The location they were trying to move to
+     */
+    private void pushPlayerBack(Player player, Location from, Location to) {
+        // Calculate direction vector from 'to' back to 'from'
+        Vector direction = from.toVector().subtract(to.toVector()).normalize();
+
+        // Amplify the push slightly (adjustable force)
+        direction.multiply(pushForce);
+
+        // Create a new location to teleport the player to
+        // This is based on their current location plus a small push back
+        Location pushLocation = player.getLocation().clone();
+        pushLocation.add(direction);
+
+        // Ensure we're not pushing them into a block
+        pushLocation.setY(getSafeY(pushLocation));
+
+        // Maintain the original look direction
+        pushLocation.setPitch(player.getLocation().getPitch());
+        pushLocation.setYaw(player.getLocation().getYaw());
+
+        // Apply some knockback effect to make it feel more natural
+        player.setVelocity(direction);
+
+        // Teleport player to the new location (this is more reliable than just setTo())
+        player.teleportAsync(pushLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
+    }
+
+    /**
+     * Find a safe Y position at the given location
+     * @param loc The location to check
+     * @return A safe Y position where the player won't be stuck in blocks
+     */
+    private double getSafeY(Location loc) {
+        // Get the block at the location
+        Block block = loc.getBlock();
+
+        // If the block is not solid, we're good
+        if (!block.getType().isSolid()) {
+            return loc.getY();
+        }
+
+        // Otherwise, look for safe space above
+        for (int y = 1; y <= 2; y++) {
+            Block above = block.getRelative(0, y, 0);
+            if (!above.getType().isSolid()) {
+                return loc.getBlockY() + y;
+            }
+        }
+
+        // Look for safe space below if above wasn't safe
+        for (int y = 1; y <= 2; y++) {
+            Block below = block.getRelative(0, -y, 0);
+            if (!below.getType().isSolid() &&
+                    !below.getRelative(0, -1, 0).getType().isSolid()) {
+                return loc.getBlockY() - y;
+            }
+        }
+
+        // If all else fails, return original Y
+        return loc.getY();
     }
 
     private boolean isSafeZone(Location location) {
@@ -414,23 +395,5 @@ public class WorldGuardHook implements Listener {
         placeholders.put("player", player.getName());
         placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
         plugin.getMessageService().sendMessage(player, messageKey, placeholders);
-    }
-
-    /**
-     * Shutdown method to clean up resources
-     */
-    public void shutdown() {
-        // Cancel any scheduled tasks
-        if (cleanupTask != null && !cleanupTask.isCancelled()) {
-            cleanupTask.cancel();
-        }
-
-        // Clear all maps
-        lastMessageTime.clear();
-        combatPlayerPearls.clear();
-        pearlThrowLocations.clear();
-        pearlThrowTimes.clear();
-
-        plugin.debug("WorldGuardHook shutdown complete");
     }
 }
