@@ -37,6 +37,7 @@ public class CombatManager {
     private Map<String, Boolean> worldEnderPearlSettings = new ConcurrentHashMap<>();
     private boolean enderPearlInCombatOnly;
     private boolean enderPearlEnabled;
+    private boolean refreshCombatOnPearlLand;
 
     // Kill reward configuration
     private long killRewardCooldownTicks;
@@ -68,6 +69,7 @@ public class CombatManager {
         this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
         this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
+        this.refreshCombatOnPearlLand = plugin.getConfig().getBoolean("enderpearl.refresh_combat_on_land", false);
 
         // Load per-world settings
         loadWorldEnderPearlSettings();
@@ -116,6 +118,7 @@ public class CombatManager {
         this.enderPearlCooldownSeconds = enderPearlCooldownTicks / 20;
         this.enderPearlEnabled = plugin.getConfig().getBoolean("enderpearl_cooldown.enabled", true);
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
+        this.refreshCombatOnPearlLand = plugin.getConfig().getBoolean("enderpearl.refresh_combat_on_land", false);
         loadWorldEnderPearlSettings();
 
         // Reload kill reward settings
@@ -123,6 +126,7 @@ public class CombatManager {
 
         this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
     }
+
 
     // Add this method to load world-specific settings
     private void loadWorldEnderPearlSettings() {
@@ -296,6 +300,10 @@ public class CombatManager {
 
         UUID playerUUID = player.getUniqueId();
 
+        if (!playersInCombat.containsKey(playerUUID)) {
+            return; // Player is not in combat
+        }
+
         playersInCombat.remove(playerUUID);
         combatOpponents.remove(playerUUID);
 
@@ -435,6 +443,25 @@ public class CombatManager {
         }
 
         return true;
+    }
+
+    public void refreshCombatOnPearlLand(Player player) {
+        if (player == null || !refreshCombatOnPearlLand) return;
+
+        // Only refresh if player is already in combat
+        if (!isInCombat(player)) return;
+
+        UUID playerUUID = player.getUniqueId();
+        long newEndTime = System.currentTimeMillis() + (combatDurationSeconds * 1000L);
+        long currentEndTime = playersInCombat.getOrDefault(playerUUID, 0L);
+
+        // Only extend the combat time, don't shorten it
+        if (newEndTime > currentEndTime) {
+            playersInCombat.put(playerUUID, newEndTime);
+
+            // Debug message if debug is enabled
+            plugin.debug("Refreshed combat time for " + player.getName() + " due to pearl landing");
+        }
     }
 
     public int getRemainingEnderPearlCooldown(Player player) {

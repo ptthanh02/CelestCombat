@@ -28,20 +28,7 @@ combat:
   # Command blocking mode: "blacklist" or "whitelist"
   # whitelist - blocks all commands EXCEPT those listed in 'allowed_commands'
   # blacklist - blocks only commands listed in 'blocked_commands'
-  command_block_mode: "whitelist"
-
-  # Commands allowed during combat (used in whitelist mode)
-  allowed_commands:
-    - "msg"
-    - "r"
-    - "reply"
-    - "tell"
-    - "w"
-    - "whisper"
-    - "shop"
-    - "buy"
-    - "sell"
-    - "ah"
+  command_block_mode: "blacklist"
 
   # Commands blocked during combat (used in blacklist mode)
   blocked_commands:
@@ -61,6 +48,19 @@ combat:
     - "vanish"
     - "v"
 
+  # Commands allowed during combat (used in whitelist mode)
+  allowed_commands:
+    - "msg"
+    - "r"
+    - "reply"
+    - "tell"
+    - "w"
+    - "whisper"
+    - "shop"
+    - "buy"
+    - "sell"
+    - "ah"
+
   # If true, players kicked/banned by admins won't be punished (killed) for combat logging
   exempt_admin_kick: true
 
@@ -79,6 +79,10 @@ combat:
 #---------------------------------------------------
 #              MOVEMENT RESTRICTIONS
 #---------------------------------------------------
+enderpearl:
+  # Refresh combat timer when player lands an ender pearl
+  refresh_combat_on_land: false
+
 enderpearl_cooldown:
   # Enable/disable ender pearl cooldowns
   enabled: true

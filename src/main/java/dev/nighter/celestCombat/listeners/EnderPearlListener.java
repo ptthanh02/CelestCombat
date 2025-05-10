@@ -12,6 +12,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -27,6 +28,9 @@ public class EnderPearlListener implements Listener {
 
     // Track players with active pearl countdown displays to avoid duplicates
     private final Map<UUID, Scheduler.Task> pearlCountdownTasks = new ConcurrentHashMap<>();
+
+    // Track thrown ender pearls to their player owners
+    private final Map<Integer, UUID> activePearls = new ConcurrentHashMap<>();
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEnderPearlUse(PlayerInteractEvent event) {
@@ -74,6 +78,28 @@ public class EnderPearlListener implements Listener {
 
                 // Start displaying the countdown for pearl cooldown
                 startPearlCountdown(player);
+
+                // Track this pearl to the player for the hit event
+                activePearls.put(event.getEntity().getEntityId(), player.getUniqueId());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onProjectileHit(ProjectileHitEvent event) {
+        if (event.getEntity() instanceof EnderPearl) {
+            // Get the pearl's entity ID
+            int pearlId = event.getEntity().getEntityId();
+
+            // Check if we're tracking this pearl
+            if (activePearls.containsKey(pearlId)) {
+                UUID playerUUID = activePearls.remove(pearlId);
+                Player player = plugin.getServer().getPlayer(playerUUID);
+
+                if (player != null && player.isOnline()) {
+                    // Pearl landed, refresh combat if enabled
+                    combatManager.refreshCombatOnPearlLand(player);
+                }
             }
         }
     }
@@ -147,5 +173,6 @@ public class EnderPearlListener implements Listener {
     public void shutdown() {
         pearlCountdownTasks.values().forEach(Scheduler.Task::cancel);
         pearlCountdownTasks.clear();
+        activePearls.clear();
     }
 }

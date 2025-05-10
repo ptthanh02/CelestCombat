@@ -61,7 +61,7 @@ jar {
     archiveBaseName.set("CelestCombat")
     archiveVersion.set("${version}")
 
-    // destinationDirectory = file('C:\\Users\\ADMIN\\OneDrive\\Desktop\\Folia\\plugins\\')
+    //destinationDirectory = file('C:\\Users\\ADMIN\\OneDrive\\Desktop\\Folia\\plugins\\')
     from sourceSets.main.output
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
