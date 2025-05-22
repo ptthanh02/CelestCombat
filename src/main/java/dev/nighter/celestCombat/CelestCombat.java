@@ -125,9 +125,9 @@ public final class CelestCombat extends JavaPlugin {
         }
 
         // Shutdown WorldGuardHook properly
-//        if (worldGuardHook != null) {
-//            worldGuardHook.shutdown();
-//        }
+        if (worldGuardHook != null) {
+            worldGuardHook.cleanup();
+        }
 
         getLogger().info("CelestCombat has been disabled!");
     }
@@ -175,6 +175,12 @@ public final class CelestCombat extends JavaPlugin {
     public void debug(String message) {
         if (debugMode) {
             getLogger().info("[DEBUG] " + message);
+        }
+    }
+
+    public void reload() {
+        if (worldGuardHook != null) {
+            worldGuardHook.cleanup();
         }
     }
 }

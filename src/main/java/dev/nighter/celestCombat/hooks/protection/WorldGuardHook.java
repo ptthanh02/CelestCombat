@@ -36,13 +36,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WorldGuardHook implements Listener {
     private final CelestCombat plugin;
     private final CombatManager combatManager;
-    private final Map<UUID, Long> lastMessageTime = new HashMap<>();
+
+    // Message cooldown optimization
+    private final Map<UUID, Long> lastMessageTime = new ConcurrentHashMap<>();
     private final long MESSAGE_COOLDOWN = 2000; // 2 seconds cooldown between messages
 
     // Track ender pearls from combat players
     private final Map<UUID, UUID> combatPlayerPearls = new ConcurrentHashMap<>();
-    // Track player locations when they throw ender pearls
-    private final Map<UUID, Location> pearlThrowLocations = new ConcurrentHashMap<>();
+    // Track player locations when they throw ender pearls with TTL
+    private final Map<UUID, PearlLocationData> pearlThrowLocations = new ConcurrentHashMap<>();
 
     // Visual barrier system
     private final Map<UUID, Set<Location>> playerBarriers = new ConcurrentHashMap<>();
@@ -54,14 +56,33 @@ public class WorldGuardHook implements Listener {
     private int barrierHeight;
     private Material barrierMaterial;
 
+    // Cache for performance optimization
+    private final Map<String, Boolean> safeZoneCache = new ConcurrentHashMap<>();
+    private long lastCacheClean = System.currentTimeMillis();
+    private static final long CACHE_CLEAN_INTERVAL = 30000; // 30 seconds
+    private static final int MAX_CACHE_SIZE = 1000;
+
+    // Pearl data with TTL for memory management
+    private static class PearlLocationData {
+        final Location location;
+        final long timestamp;
+
+        PearlLocationData(Location location) {
+            this.location = location.clone();
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > 60000; // 60 seconds TTL
+        }
+    }
+
     public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
         this.combatManager = combatManager;
 
         // Load configuration
-        this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
-        this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
-        this.barrierMaterial = loadBarrierMaterial();
+        reloadConfig();
 
         // Start cleanup task
         startCleanupTask();
@@ -72,6 +93,9 @@ public class WorldGuardHook implements Listener {
         this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
         this.barrierMaterial = loadBarrierMaterial();
+
+        // Clear cache when config reloads
+        safeZoneCache.clear();
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -96,8 +120,8 @@ public class WorldGuardHook implements Listener {
             // Store projectile ID with player ID
             combatPlayerPearls.put(projectile.getUniqueId(), player.getUniqueId());
 
-            // Store the player's location when they throw the pearl
-            pearlThrowLocations.put(player.getUniqueId(), player.getLocation().clone());
+            // Store the player's location when they throw the pearl with TTL
+            pearlThrowLocations.put(player.getUniqueId(), new PearlLocationData(player.getLocation()));
         }
     }
 
@@ -112,19 +136,33 @@ public class WorldGuardHook implements Listener {
 
         // Check if this is a pearl we're tracking (from combat player)
         UUID projectileId = projectile.getUniqueId();
-        if (!combatPlayerPearls.containsKey(projectileId)) {
+        UUID playerUUID = combatPlayerPearls.remove(projectileId); // Remove while getting
+
+        if (playerUUID == null) {
             return;
         }
 
         // Get the player who threw the pearl
-        UUID playerUUID = combatPlayerPearls.get(projectileId);
         Player player = plugin.getServer().getPlayer(playerUUID);
 
-        // Clean up tracking for this projectile
-        combatPlayerPearls.remove(projectileId);
-
         // Check pearl destination by using the future teleport location
-        Location teleportDestination = null;
+        Location teleportDestination = calculateTeleportDestination(event, projectile);
+
+        // Check if teleport destination is in a safezone
+        if (isSafeZone(teleportDestination)) {
+            // Cancel the teleportation event
+            event.setCancelled(true);
+
+            // Handle player teleport back
+            handlePearlTeleportBack(player, playerUUID);
+        }
+
+        // Always clean up the saved location
+        pearlThrowLocations.remove(playerUUID);
+    }
+
+    private Location calculateTeleportDestination(ProjectileHitEvent event, Projectile projectile) {
+        Location teleportDestination;
 
         // If hit block, calculate where player would land
         if (event.getHitBlock() != null) {
@@ -146,14 +184,15 @@ public class WorldGuardHook implements Listener {
             teleportDestination = projectile.getLocation();
         }
 
-        // Check if teleport destination is in a safezone
-        if (isSafeZone(teleportDestination)) {
-            // Cancel the teleportation event
-            event.setCancelled(true);
+        return teleportDestination;
+    }
 
-            // Check if player is online and get their saved location
-            if (player != null && player.isOnline() && pearlThrowLocations.containsKey(playerUUID)) {
-                Location originalLocation = pearlThrowLocations.get(playerUUID);
+    private void handlePearlTeleportBack(Player player, UUID playerUUID) {
+        // Check if player is online and get their saved location
+        if (player != null && player.isOnline()) {
+            PearlLocationData pearlData = pearlThrowLocations.get(playerUUID);
+            if (pearlData != null && !pearlData.isExpired()) {
+                Location originalLocation = pearlData.location;
 
                 // Delay the teleport to ensure it happens after the pearl event is processed
                 Scheduler.runTaskLater(() -> {
@@ -161,29 +200,29 @@ public class WorldGuardHook implements Listener {
                         if (success) {
                             sendCooldownMessage(player, "combat_no_pearl_safezone");
                         } else {
-                            // If teleport fails, try to find a safe location
-                            Location safeLocation = findSafeLocation(originalLocation);
-                            if (safeLocation != null) {
-                                player.teleportAsync(safeLocation);
-                                sendCooldownMessage(player, "combat_no_pearl_safezone");
-                            } else {
-                                // Last resort - kill the player
-                                player.setHealth(0);
-                                plugin.getLogger().warning("Killed player " + player.getName() + " as no safe location could be found");
-                                sendCooldownMessage(player, "combat_killed_no_safe_location");
-                            }
+                            handleFailedTeleport(player, originalLocation);
                         }
                     });
-                }, 1L); // Just a 1 tick delay, but enough to ensure proper order
-            }
-            // If no location saved but player is online, just send message
-            else if (player != null && player.isOnline()) {
+                }, 1L);
+            } else {
+                // No valid location saved, just send message
                 sendCooldownMessage(player, "combat_no_pearl_safezone");
             }
         }
+    }
 
-        // Always clean up the saved location
-        pearlThrowLocations.remove(playerUUID);
+    private void handleFailedTeleport(Player player, Location originalLocation) {
+        // If teleport fails, try to find a safe location
+        Location safeLocation = findSafeLocation(originalLocation);
+        if (safeLocation != null) {
+            player.teleportAsync(safeLocation);
+            sendCooldownMessage(player, "combat_no_pearl_safezone");
+        } else {
+            // Last resort - kill the player
+            player.setHealth(0);
+            plugin.getLogger().warning("Killed player " + player.getName() + " as no safe location could be found");
+            sendCooldownMessage(player, "combat_killed_no_safe_location");
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -202,24 +241,21 @@ public class WorldGuardHook implements Listener {
         }
 
         // Only process if the player has moved to a new block (optimization)
-        if (event.getFrom().getBlockX() == event.getTo().getBlockX() &&
-                event.getFrom().getBlockY() == event.getTo().getBlockY() &&
-                event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {
+        Location from = event.getFrom();
+        Location to = event.getTo();
+
+        if (to == null || (from.getBlockX() == to.getBlockX() &&
+                from.getBlockY() == to.getBlockY() &&
+                from.getBlockZ() == to.getBlockZ())) {
             return;
         }
 
         // Check if player is crossing between PVP and no-PVP zones
-        Location from = event.getFrom();
-        Location to = event.getTo();
-
         boolean fromSafe = isSafeZone(from);
         boolean toSafe = isSafeZone(to);
 
         // If trying to enter a safezone while in combat
-        if (!fromSafe && toSafe) {
-            // Cancel the movement
-            event.setCancelled(true);
-
+        if (!fromSafe && toSafe) {;
             // Push player back
             pushPlayerBack(player, from, to);
 
@@ -294,10 +330,7 @@ public class WorldGuardHook implements Listener {
         Location normalizedLoc = normalizeToBlockLocation(loc);
 
         Set<UUID> viewers = barrierViewers.get(normalizedLoc);
-        if (viewers == null) {
-            return;
-        }
-        if (viewers.contains(player.getUniqueId())) {
+        if (viewers != null && viewers.contains(player.getUniqueId())) {
             // Re-send the barrier block to fix any visual issues
             player.sendBlockChange(normalizedLoc, barrierMaterial.createBlockData());
         }
@@ -317,8 +350,17 @@ public class WorldGuardHook implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+
         // Clean up player's barriers when they disconnect
         removePlayerBarriers(player);
+
+        // Clean up other player-specific data
+        lastMessageTime.remove(playerUUID);
+        pearlThrowLocations.remove(playerUUID);
+
+        // Clean up any projectiles this player may have thrown
+        combatPlayerPearls.entrySet().removeIf(entry -> entry.getValue().equals(playerUUID));
     }
 
     private void pushPlayerBack(Player player, Location from, Location to) {
@@ -525,42 +567,81 @@ public class WorldGuardHook implements Listener {
     }
 
     /**
-     * Starts a cleanup task to remove barriers for players no longer in combat
+     * Enhanced cleanup task with better memory management
      */
     private void startCleanupTask() {
         Scheduler.runTaskTimerAsync(() -> {
-            // Clean up barriers for players no longer in combat
-            Iterator<Map.Entry<UUID, Set<Location>>> iterator = playerBarriers.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<UUID, Set<Location>> entry = iterator.next();
-                UUID playerUUID = entry.getKey();
-                Player player = plugin.getServer().getPlayer(playerUUID);
+            long currentTime = System.currentTimeMillis();
 
-                if (player == null || !player.isOnline() || !combatManager.isInCombat(player)) {
-                    // Remove barriers for this player
-                    Set<Location> barriers = entry.getValue();
-                    if (player != null && player.isOnline()) {
-                        for (Location loc : barriers) {
-                            removeBarrierBlock(loc, player);
-                        }
-                    } else {
-                        // Player is offline, just clean up data
-                        for (Location loc : barriers) {
-                            Location normalizedLoc = normalizeToBlockLocation(loc);
-                            Set<UUID> viewers = barrierViewers.get(normalizedLoc);
-                            if (viewers != null) {
-                                viewers.remove(playerUUID);
-                                if (viewers.isEmpty()) {
-                                    barrierViewers.remove(normalizedLoc);
-                                    originalBlocks.remove(normalizedLoc);
-                                }
-                            }
-                        }
-                    }
-                    iterator.remove();
-                }
-            }
+            // Clean up barriers for players no longer in combat
+            cleanupPlayerBarriers();
+
+            // Clean up expired pearl locations
+            cleanupExpiredPearlLocations(currentTime);
+
+            // Clean up message cooldowns
+            cleanupMessageCooldowns(currentTime);
+
+            // Clean up safezone cache periodically
+            cleanupSafeZoneCache(currentTime);
+
         }, 100L, 100L); // Run every 5 seconds
+    }
+
+    private void cleanupPlayerBarriers() {
+        Iterator<Map.Entry<UUID, Set<Location>>> iterator = playerBarriers.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, Set<Location>> entry = iterator.next();
+            UUID playerUUID = entry.getKey();
+            Player player = plugin.getServer().getPlayer(playerUUID);
+
+            if (player == null || !player.isOnline() || !combatManager.isInCombat(player)) {
+                // Remove barriers for this player
+                Set<Location> barriers = entry.getValue();
+                if (player != null && player.isOnline()) {
+                    for (Location loc : barriers) {
+                        removeBarrierBlock(loc, player);
+                    }
+                } else {
+                    // Player is offline, just clean up data
+                    for (Location loc : barriers) {
+                        cleanupOfflinePlayerBarrier(loc, playerUUID);
+                    }
+                }
+                iterator.remove();
+            }
+        }
+    }
+
+    private void cleanupOfflinePlayerBarrier(Location loc, UUID playerUUID) {
+        Location normalizedLoc = normalizeToBlockLocation(loc);
+        Set<UUID> viewers = barrierViewers.get(normalizedLoc);
+        if (viewers != null) {
+            viewers.remove(playerUUID);
+            if (viewers.isEmpty()) {
+                barrierViewers.remove(normalizedLoc);
+                originalBlocks.remove(normalizedLoc);
+            }
+        }
+    }
+
+    private void cleanupExpiredPearlLocations(long currentTime) {
+        pearlThrowLocations.entrySet().removeIf(entry -> entry.getValue().isExpired());
+    }
+
+    private void cleanupMessageCooldowns(long currentTime) {
+        lastMessageTime.entrySet().removeIf(entry ->
+                currentTime - entry.getValue() > MESSAGE_COOLDOWN * 10); // Keep for 10x cooldown time
+    }
+
+    private void cleanupSafeZoneCache(long currentTime) {
+        if (currentTime - lastCacheClean > CACHE_CLEAN_INTERVAL) {
+            // Clean cache if it's too large
+            if (safeZoneCache.size() > MAX_CACHE_SIZE) {
+                safeZoneCache.clear();
+            }
+            lastCacheClean = currentTime;
+        }
     }
 
     private boolean isSafeZone(Location location) {
@@ -570,13 +651,30 @@ public class WorldGuardHook implements Listener {
     private boolean isPvPAllowed(Location location) {
         if (location == null) return true;
 
+        // Create cache key
+        String cacheKey = location.getWorld().getName() + ":" +
+                location.getBlockX() + ":" +
+                location.getBlockY() + ":" +
+                location.getBlockZ();
+
+        // Check cache first
+        Boolean cached = safeZoneCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         try {
             RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
             RegionQuery query = container.createQuery();
             com.sk89q.worldedit.util.Location worldGuardLoc = BukkitAdapter.adapt(location);
 
-            // Check the PvP flag for the location directly (no caching)
-            return query.testState(worldGuardLoc, null, Flags.PVP);
+            // Check the PvP flag for the location directly
+            boolean pvpAllowed = query.testState(worldGuardLoc, null, Flags.PVP);
+
+            // Cache the result
+            safeZoneCache.put(cacheKey, pvpAllowed);
+
+            return pvpAllowed;
         } catch (Exception e) {
             plugin.getLogger().warning("Error checking WorldGuard PvP flag: " + e.getMessage());
             return true; // Default to allowing PvP if there's an error
@@ -672,8 +770,8 @@ public class WorldGuardHook implements Listener {
         long currentTime = System.currentTimeMillis();
 
         // Check if message is on cooldown
-        if (lastMessageTime.containsKey(playerUUID) &&
-                currentTime - lastMessageTime.get(playerUUID) < MESSAGE_COOLDOWN) {
+        Long lastTime = lastMessageTime.get(playerUUID);
+        if (lastTime != null && currentTime - lastTime < MESSAGE_COOLDOWN) {
             return;
         }
 
@@ -710,5 +808,18 @@ public class WorldGuardHook implements Listener {
             plugin.getLogger().warning("Valid materials can be found at: https://jd.papermc.io/paper/1.21.5/org/bukkit/Material.html");
             return Material.RED_STAINED_GLASS;
         }
+    }
+
+    /**
+     * Cleanup method to be called when plugin is disabled
+     */
+    public void cleanup() {
+        combatPlayerPearls.clear();
+        pearlThrowLocations.clear();
+        playerBarriers.clear();
+        originalBlocks.clear();
+        barrierViewers.clear();
+        lastMessageTime.clear();
+        safeZoneCache.clear();
     }
 }

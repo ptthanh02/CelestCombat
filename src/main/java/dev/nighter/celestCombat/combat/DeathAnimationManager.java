@@ -78,7 +78,7 @@ public class DeathAnimationManager {
                 1.0F,
                 1.0F
         );
-        plugin.getLogger().info("Lightning animation performed at " + location);
+        // plugin.debug("Lightning animation performed at " + location);
     }
 
     private void performParticleAnimation(World world, Location location) {
@@ -105,6 +105,6 @@ public class DeathAnimationManager {
                 1.0F
         );
 
-        plugin.getLogger().info("Fire particles animation performed at " + location);
+        // plugin.debug("Fire particles animation performed at " + location);
     }
 }

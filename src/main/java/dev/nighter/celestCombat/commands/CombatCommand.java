@@ -50,6 +50,8 @@ public class CombatCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        plugin.reload();
+
         // Reload config
         plugin.reloadConfig();
         plugin.getLanguageManager().reloadLanguages();
