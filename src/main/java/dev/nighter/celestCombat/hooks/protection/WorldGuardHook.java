@@ -20,12 +20,12 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.projectiles.ProjectileSource;
-import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,20 +41,34 @@ public class WorldGuardHook implements Listener {
     // Track player locations when they throw ender pearls
     private final Map<UUID, Location> pearlThrowLocations = new ConcurrentHashMap<>();
 
-    // Configurable push-back strength
-    private double pushForce;
+    // Visual barrier system
+    private final Map<UUID, Set<Location>> playerBarriers = new ConcurrentHashMap<>();
+    private final Map<Location, Material> originalBlocks = new ConcurrentHashMap<>();
+    private final Map<Location, Set<UUID>> barrierViewers = new ConcurrentHashMap<>();
+
+    // Configuration
+    private int barrierDetectionRadius;
+    private int barrierHeight;
+    private int barrierCheckDistance;
 
     public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
         this.combatManager = combatManager;
 
-        // Load push force from config
-        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 0.3);
+        // Load configuration
+        this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
+        this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
+        this.barrierCheckDistance = plugin.getConfig().getInt("safezone_protection.barrier_check_distance", 10);
+
+        // Start cleanup task
+        startCleanupTask();
     }
 
     public void reloadConfig() {
-        // Reload push force from config
-        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 0.3);
+        // Reload configuration
+        this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
+        this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
+        this.barrierCheckDistance = plugin.getConfig().getInt("safezone_protection.barrier_check_distance", 10);
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -179,6 +193,8 @@ public class WorldGuardHook implements Listener {
 
         // Skip event if player is not in combat
         if (!combatManager.isInCombat(player)) {
+            // Remove any barriers for this player
+            removePlayerBarriers(player);
             return;
         }
 
@@ -198,76 +214,221 @@ public class WorldGuardHook implements Listener {
 
         // If trying to enter a safezone while in combat
         if (!fromSafe && toSafe) {
-            // Push player back instead of cancelling the event
-            pushPlayerBack(player, from, to);
+            // Cancel the movement
+            event.setCancelled(true);
 
             // Send message
             sendCooldownMessage(player, "combat_no_safezone_entry");
         }
+
+        // Update visual barriers regardless of movement result
+        updatePlayerBarriers(player);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Location blockLoc = event.getBlock().getLocation();
+
+        // Check if this block is part of a barrier system
+        if (originalBlocks.containsKey(blockLoc)) {
+            // Don't allow breaking barrier blocks
+            event.setCancelled(true);
+
+            // Send message if player is in combat
+            if (combatManager.isInCombat(player)) {
+                sendCooldownMessage(player, "combat_barrier_break_denied");
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        // Clean up player's barriers when they disconnect
+        removePlayerBarriers(player);
     }
 
     /**
-     * Pushes a player back away from a safe zone border
-     * @param player The player to push back
-     * @param from The player's original location
-     * @param to The location they were trying to move to
+     * Updates visual barriers for a combat player based on their current location
      */
-    private void pushPlayerBack(Player player, Location from, Location to) {
-        // Calculate direction vector from 'to' back to 'from'
-        Vector direction = from.toVector().subtract(to.toVector()).normalize();
+    private void updatePlayerBarriers(Player player) {
+        if (!combatManager.isInCombat(player)) {
+            removePlayerBarriers(player);
+            return;
+        }
 
-        // Amplify the push slightly (adjustable force)
-        direction.multiply(pushForce);
+        Set<Location> newBarriers = findNearbyBarrierLocations(player.getLocation());
+        Set<Location> currentBarriers = playerBarriers.getOrDefault(player.getUniqueId(), new HashSet<>());
 
-        // Create a new location to teleport the player to
-        // This is based on their current location plus a small push back
-        Location pushLocation = player.getLocation().clone();
-        pushLocation.add(direction);
+        // Remove barriers that are no longer needed
+        Set<Location> toRemove = new HashSet<>(currentBarriers);
+        toRemove.removeAll(newBarriers);
+        for (Location loc : toRemove) {
+            removeBarrierBlock(loc, player);
+        }
 
-        // Ensure we're not pushing them into a block
-        pushLocation.setY(getSafeY(pushLocation));
+        // Add new barriers
+        Set<Location> toAdd = new HashSet<>(newBarriers);
+        toAdd.removeAll(currentBarriers);
+        for (Location loc : toAdd) {
+            createBarrierBlock(loc, player);
+        }
 
-        // Maintain the original look direction
-        pushLocation.setPitch(player.getLocation().getPitch());
-        pushLocation.setYaw(player.getLocation().getYaw());
-
-        // Apply some knockback effect to make it feel more natural
-        player.setVelocity(direction);
+        // Update player's barrier set
+        if (newBarriers.isEmpty()) {
+            playerBarriers.remove(player.getUniqueId());
+        } else {
+            playerBarriers.put(player.getUniqueId(), newBarriers);
+        }
     }
 
     /**
-     * Find a safe Y position at the given location
-     * @param loc The location to check
-     * @return A safe Y position where the player won't be stuck in blocks
+     * Finds locations where barriers should be placed near the player
      */
-    private double getSafeY(Location loc) {
-        // Get the block at the location
+    private Set<Location> findNearbyBarrierLocations(Location playerLoc) {
+        Set<Location> barrierLocations = new HashSet<>();
+
+        // Search in a radius around the player for safezone borders
+        int radius = barrierDetectionRadius;
+
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                for (int y = -2; y <= barrierHeight; y++) {
+                    Location checkLoc = playerLoc.clone().add(x, y, z);
+
+                    // Skip if too far from player (circular radius)
+                    if (checkLoc.distance(playerLoc) > radius) {
+                        continue;
+                    }
+
+                    // Check if this location is on the border between safe and unsafe zones
+                    if (isBorderLocation(checkLoc)) {
+                        barrierLocations.add(checkLoc);
+                    }
+                }
+            }
+        }
+
+        return barrierLocations;
+    }
+
+    /**
+     * Checks if a location is on the border between safe and unsafe zones
+     */
+    private boolean isBorderLocation(Location loc) {
+        if (!isSafeZone(loc)) {
+            return false;
+        }
+
+        // Check adjacent blocks to see if any are unsafe zones
+        int[][] directions = {{1,0,0}, {-1,0,0}, {0,0,1}, {0,0,-1}};
+
+        for (int[] dir : directions) {
+            Location adjacent = loc.clone().add(dir[0], dir[1], dir[2]);
+            if (!isSafeZone(adjacent)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Creates a barrier block at the specified location for the player
+     */
+    private void createBarrierBlock(Location loc, Player player) {
         Block block = loc.getBlock();
 
-        // If the block is not solid, we're good
-        if (!block.getType().isSolid()) {
-            return loc.getY();
+        // Only create barrier if the block is air or replaceable
+        if (block.getType() != Material.AIR && block.getType().isSolid()) {
+            return;
         }
 
-        // Otherwise, look for safe space above
-        for (int y = 1; y <= 2; y++) {
-            Block above = block.getRelative(0, y, 0);
-            if (!above.getType().isSolid()) {
-                return loc.getBlockY() + y;
+        // Store original block type
+        originalBlocks.put(loc, block.getType());
+
+        // Add player to viewers of this barrier
+        barrierViewers.computeIfAbsent(loc, k -> new HashSet<>()).add(player.getUniqueId());
+
+        // Send block change to player (red stained glass pane)
+        player.sendBlockChange(loc, Material.RED_STAINED_GLASS.createBlockData());
+    }
+
+    /**
+     * Removes a barrier block at the specified location for the player
+     */
+    private void removeBarrierBlock(Location loc, Player player) {
+        Set<UUID> viewers = barrierViewers.get(loc);
+        if (viewers != null) {
+            viewers.remove(player.getUniqueId());
+
+            // If no more viewers, clean up completely
+            if (viewers.isEmpty()) {
+                barrierViewers.remove(loc);
+                Material originalType = originalBlocks.remove(loc);
+                if (originalType != null) {
+                    // Restore original block for the player
+                    player.sendBlockChange(loc, originalType.createBlockData());
+                }
+            } else {
+                // Just restore original block for this player
+                Material originalType = originalBlocks.get(loc);
+                if (originalType != null) {
+                    player.sendBlockChange(loc, originalType.createBlockData());
+                }
             }
         }
+    }
 
-        // Look for safe space below if above wasn't safe
-        for (int y = 1; y <= 2; y++) {
-            Block below = block.getRelative(0, -y, 0);
-            if (!below.getType().isSolid() &&
-                    !below.getRelative(0, -1, 0).getType().isSolid()) {
-                return loc.getBlockY() - y;
+    /**
+     * Removes all barriers for a specific player
+     */
+    private void removePlayerBarriers(Player player) {
+        Set<Location> barriers = playerBarriers.remove(player.getUniqueId());
+        if (barriers != null) {
+            for (Location loc : barriers) {
+                removeBarrierBlock(loc, player);
             }
         }
+    }
 
-        // If all else fails, return original Y
-        return loc.getY();
+    /**
+     * Starts a cleanup task to remove barriers for players no longer in combat
+     */
+    private void startCleanupTask() {
+        Scheduler.runTaskTimerAsync(() -> {
+            // Clean up barriers for players no longer in combat
+            Iterator<Map.Entry<UUID, Set<Location>>> iterator = playerBarriers.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, Set<Location>> entry = iterator.next();
+                UUID playerUUID = entry.getKey();
+                Player player = plugin.getServer().getPlayer(playerUUID);
+
+                if (player == null || !player.isOnline() || !combatManager.isInCombat(player)) {
+                    // Remove barriers for this player
+                    Set<Location> barriers = entry.getValue();
+                    if (player != null && player.isOnline()) {
+                        for (Location loc : barriers) {
+                            removeBarrierBlock(loc, player);
+                        }
+                    } else {
+                        // Player is offline, just clean up data
+                        for (Location loc : barriers) {
+                            Set<UUID> viewers = barrierViewers.get(loc);
+                            if (viewers != null) {
+                                viewers.remove(playerUUID);
+                                if (viewers.isEmpty()) {
+                                    barrierViewers.remove(loc);
+                                    originalBlocks.remove(loc);
+                                }
+                            }
+                        }
+                    }
+                    iterator.remove();
+                }
+            }
+        }, 100L, 100L); // Run every 5 seconds
     }
 
     private boolean isSafeZone(Location location) {

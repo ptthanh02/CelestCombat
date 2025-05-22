@@ -159,6 +159,6 @@ safezone_protection:
   # This will prevent players from entering safezones while in combat
   enabled: true
 
-  # Push force controls how strongly players are knocked back when trying to enter a safezone
-  # Higher values will push players further away from the safezone border
-  push_force: 0.3
+  barrier_detection_radius: 5  # How close to borders before barriers appear
+  barrier_height: 3           # How tall the barriers are
+  barrier_check_distance: 10  # Maximum distance to check for borders
