@@ -20,12 +20,15 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,7 +52,7 @@ public class WorldGuardHook implements Listener {
     // Configuration
     private int barrierDetectionRadius;
     private int barrierHeight;
-    private int barrierCheckDistance;
+    private Material barrierMaterial;
 
     public WorldGuardHook(CelestCombat plugin, CombatManager combatManager) {
         this.plugin = plugin;
@@ -58,7 +61,7 @@ public class WorldGuardHook implements Listener {
         // Load configuration
         this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
-        this.barrierCheckDistance = plugin.getConfig().getInt("safezone_protection.barrier_check_distance", 10);
+        this.barrierMaterial = loadBarrierMaterial();
 
         // Start cleanup task
         startCleanupTask();
@@ -68,7 +71,7 @@ public class WorldGuardHook implements Listener {
         // Reload configuration
         this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
-        this.barrierCheckDistance = plugin.getConfig().getInt("safezone_protection.barrier_check_distance", 10);
+        this.barrierMaterial = loadBarrierMaterial();
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -217,6 +220,9 @@ public class WorldGuardHook implements Listener {
             // Cancel the movement
             event.setCancelled(true);
 
+            // Push player back
+            pushPlayerBack(player, from, to);
+
             // Send message
             sendCooldownMessage(player, "combat_no_safezone_entry");
         }
@@ -225,20 +231,86 @@ public class WorldGuardHook implements Listener {
         updatePlayerBarriers(player);
     }
 
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+
+        if (!combatManager.isInCombat(player)) {
+            removePlayerBarriers(player);
+            return;
+        }
+
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK && event.getAction() != Action.LEFT_CLICK_BLOCK) {
+            return;
+        }
+
+        if (event.getClickedBlock() == null) {
+            return;
+        }
+
+        Location blockLoc = event.getClickedBlock().getLocation();
+
+        // Check if this block is a barrier for this player
+        Set<Location> playerBarrierSet = playerBarriers.get(player.getUniqueId());
+        if (playerBarrierSet != null && containsBlockLocation(playerBarrierSet, blockLoc)) {
+            // Cancel the interaction to prevent visual glitches
+            event.setCancelled(true);
+
+            // Refresh the barrier block for the player to fix any visual issues
+            Scheduler.runTaskLater(() -> refreshBarrierBlock(blockLoc, player), 1L);
+        }
+    }
+
+    /**
+     * Helper method to check if a set of locations contains a block location
+     * This normalizes locations to block coordinates for proper comparison
+     */
+    private boolean containsBlockLocation(Set<Location> locations, Location blockLoc) {
+        Location normalizedBlockLoc = normalizeToBlockLocation(blockLoc);
+
+        for (Location loc : locations) {
+            Location normalizedLoc = normalizeToBlockLocation(loc);
+            if (normalizedLoc.equals(normalizedBlockLoc)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Normalizes a location to block coordinates (integer coordinates)
+     */
+    private Location normalizeToBlockLocation(Location loc) {
+        return new Location(
+                loc.getWorld(),
+                loc.getBlockX(),
+                loc.getBlockY(),
+                loc.getBlockZ()
+        );
+    }
+
+    private void refreshBarrierBlock(Location loc, Player player) {
+        // Normalize the location to ensure proper lookup
+        Location normalizedLoc = normalizeToBlockLocation(loc);
+
+        Set<UUID> viewers = barrierViewers.get(normalizedLoc);
+        if (viewers == null) {
+            return;
+        }
+        if (viewers.contains(player.getUniqueId())) {
+            // Re-send the barrier block to fix any visual issues
+            player.sendBlockChange(normalizedLoc, barrierMaterial.createBlockData());
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        Location blockLoc = event.getBlock().getLocation();
+        Location blockLoc = normalizeToBlockLocation(event.getBlock().getLocation());
 
         // Check if this block is part of a barrier system
         if (originalBlocks.containsKey(blockLoc)) {
             // Don't allow breaking barrier blocks
             event.setCancelled(true);
-
-            // Send message if player is in combat
-            if (combatManager.isInCombat(player)) {
-                sendCooldownMessage(player, "combat_barrier_break_denied");
-            }
         }
     }
 
@@ -247,6 +319,59 @@ public class WorldGuardHook implements Listener {
         Player player = event.getPlayer();
         // Clean up player's barriers when they disconnect
         removePlayerBarriers(player);
+    }
+
+    private void pushPlayerBack(Player player, Location from, Location to) {
+        // Calculate direction vector from 'to' back to 'from'
+        Vector direction = from.toVector().subtract(to.toVector()).normalize();
+
+        // Amplify the push slightly (adjustable force)
+        direction.multiply(0.6);
+
+        // Create a new location to teleport the player to
+        // This is based on their current location plus a small push back
+        Location pushLocation = player.getLocation().clone();
+        pushLocation.add(direction);
+
+        // Ensure we're not pushing them into a block
+        pushLocation.setY(getSafeY(pushLocation));
+
+        // Maintain the original look direction
+        pushLocation.setPitch(player.getLocation().getPitch());
+        pushLocation.setYaw(player.getLocation().getYaw());
+
+        // Apply some knockback effect to make it feel more natural
+        player.setVelocity(direction);
+    }
+
+    private double getSafeY(Location loc) {
+        // Get the block at the location
+        Block block = loc.getBlock();
+
+        // If the block is not solid, we're good
+        if (!block.getType().isSolid()) {
+            return loc.getY();
+        }
+
+        // Otherwise, look for safe space above
+        for (int y = 1; y <= 2; y++) {
+            Block above = block.getRelative(0, y, 0);
+            if (!above.getType().isSolid()) {
+                return loc.getBlockY() + y;
+            }
+        }
+
+        // Look for safe space below if above wasn't safe
+        for (int y = 1; y <= 2; y++) {
+            Block below = block.getRelative(0, -y, 0);
+            if (!below.getType().isSolid() &&
+                    !below.getRelative(0, -1, 0).getType().isSolid()) {
+                return loc.getBlockY() - y;
+            }
+        }
+
+        // If all else fails, return original Y
+        return loc.getY();
     }
 
     /**
@@ -304,7 +429,8 @@ public class WorldGuardHook implements Listener {
 
                     // Check if this location is on the border between safe and unsafe zones
                     if (isBorderLocation(checkLoc)) {
-                        barrierLocations.add(checkLoc);
+                        // Normalize the location to block coordinates
+                        barrierLocations.add(normalizeToBlockLocation(checkLoc));
                     }
                 }
             }
@@ -338,7 +464,9 @@ public class WorldGuardHook implements Listener {
      * Creates a barrier block at the specified location for the player
      */
     private void createBarrierBlock(Location loc, Player player) {
-        Block block = loc.getBlock();
+        // Normalize location to block coordinates
+        Location normalizedLoc = normalizeToBlockLocation(loc);
+        Block block = normalizedLoc.getBlock();
 
         // Only create barrier if the block is air or replaceable
         if (block.getType() != Material.AIR && block.getType().isSolid()) {
@@ -346,36 +474,39 @@ public class WorldGuardHook implements Listener {
         }
 
         // Store original block type
-        originalBlocks.put(loc, block.getType());
+        originalBlocks.put(normalizedLoc, block.getType());
 
         // Add player to viewers of this barrier
-        barrierViewers.computeIfAbsent(loc, k -> new HashSet<>()).add(player.getUniqueId());
+        barrierViewers.computeIfAbsent(normalizedLoc, k -> new HashSet<>()).add(player.getUniqueId());
 
-        // Send block change to player (red stained glass pane)
-        player.sendBlockChange(loc, Material.RED_STAINED_GLASS.createBlockData());
+        // Send block change to player (configurable barrier material)
+        player.sendBlockChange(normalizedLoc, barrierMaterial.createBlockData());
     }
 
     /**
      * Removes a barrier block at the specified location for the player
      */
     private void removeBarrierBlock(Location loc, Player player) {
-        Set<UUID> viewers = barrierViewers.get(loc);
+        // Normalize location to block coordinates
+        Location normalizedLoc = normalizeToBlockLocation(loc);
+
+        Set<UUID> viewers = barrierViewers.get(normalizedLoc);
         if (viewers != null) {
             viewers.remove(player.getUniqueId());
 
             // If no more viewers, clean up completely
             if (viewers.isEmpty()) {
-                barrierViewers.remove(loc);
-                Material originalType = originalBlocks.remove(loc);
+                barrierViewers.remove(normalizedLoc);
+                Material originalType = originalBlocks.remove(normalizedLoc);
                 if (originalType != null) {
                     // Restore original block for the player
-                    player.sendBlockChange(loc, originalType.createBlockData());
+                    player.sendBlockChange(normalizedLoc, originalType.createBlockData());
                 }
             } else {
                 // Just restore original block for this player
-                Material originalType = originalBlocks.get(loc);
+                Material originalType = originalBlocks.get(normalizedLoc);
                 if (originalType != null) {
-                    player.sendBlockChange(loc, originalType.createBlockData());
+                    player.sendBlockChange(normalizedLoc, originalType.createBlockData());
                 }
             }
         }
@@ -415,12 +546,13 @@ public class WorldGuardHook implements Listener {
                     } else {
                         // Player is offline, just clean up data
                         for (Location loc : barriers) {
-                            Set<UUID> viewers = barrierViewers.get(loc);
+                            Location normalizedLoc = normalizeToBlockLocation(loc);
+                            Set<UUID> viewers = barrierViewers.get(normalizedLoc);
                             if (viewers != null) {
                                 viewers.remove(playerUUID);
                                 if (viewers.isEmpty()) {
-                                    barrierViewers.remove(loc);
-                                    originalBlocks.remove(loc);
+                                    barrierViewers.remove(normalizedLoc);
+                                    originalBlocks.remove(normalizedLoc);
                                 }
                             }
                         }
@@ -553,5 +685,30 @@ public class WorldGuardHook implements Listener {
         placeholders.put("player", player.getName());
         placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
         plugin.getMessageService().sendMessage(player, messageKey, placeholders);
+    }
+
+    /**
+     * Loads and validates the barrier material from config
+     */
+    private Material loadBarrierMaterial() {
+        String materialName = plugin.getConfig().getString("safezone_protection.barrier_material", "RED_STAINED_GLASS");
+
+        try {
+            Material material = Material.valueOf(materialName.toUpperCase());
+
+            // Validate that the material is a valid block material
+            if (!material.isBlock()) {
+                plugin.getLogger().warning("Barrier material '" + materialName + "' is not a valid block material. Using RED_STAINED_GLASS instead.");
+                return Material.RED_STAINED_GLASS;
+            }
+
+            plugin.debug("Using barrier material: " + material.name() + " for safezone protection.");
+            return material;
+
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid barrier material '" + materialName + "' in config. Using RED_STAINED_GLASS instead.");
+            plugin.getLogger().warning("Valid materials can be found at: https://jd.papermc.io/paper/1.21.5/org/bukkit/Material.html");
+            return Material.RED_STAINED_GLASS;
+        }
     }
 }
