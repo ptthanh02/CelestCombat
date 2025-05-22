@@ -49,12 +49,12 @@ public class WorldGuardHook implements Listener {
         this.combatManager = combatManager;
 
         // Load push force from config
-        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 1.5);
+        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 0.3);
     }
 
     public void reloadConfig() {
         // Reload push force from config
-        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 1.5);
+        this.pushForce = plugin.getConfig().getDouble("safezone_protection.push_force", 0.3);
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -233,9 +233,6 @@ public class WorldGuardHook implements Listener {
 
         // Apply some knockback effect to make it feel more natural
         player.setVelocity(direction);
-
-        // Teleport player to the new location (this is more reliable than just setTo())
-        player.teleportAsync(pushLocation, PlayerTeleportEvent.TeleportCause.PLUGIN);
     }
 
     /**

@@ -161,4 +161,4 @@ safezone_protection:
 
   # Push force controls how strongly players are knocked back when trying to enter a safezone
   # Higher values will push players further away from the safezone border
-  push_force: 1.5
+  push_force: 0.3
