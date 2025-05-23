@@ -73,10 +73,25 @@ no_permission:
   message: "&cYou don't have permission to use this command."
   sound: entity.villager.no
 
+help_message:
+  message: |
+    &8&m
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    &8                          &7&#F5F5DC&lCOMMAND LIST
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    &8» &#4A90E2/celestcombat reload &#F5F5DC- Reload the plugin configuration
+    &8» &#4A90E2/celestcombat tag &#F5F5DC- Tag players in combat
+    &8» &#4A90E2/celestcombat removeTag &#F5F5DC- Remove a player from combat
+    &8» &#4A90E2/celestcombat removeTagWorld &#F5F5DC- Remove all players from combat in a world
+    &8» &#4A90E2/celestcombat removeTagAll &#F5F5DC- Remove all players from combat server-wide
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Reload command messages
 config_reloaded:
   message: "&#4CAF50CelestCombat configuration successfully reloaded."
   sound: entity.player.levelup
 
+# Combat tag command messages
 combat_tag_success:
   message: "&#4CAF50Successfully tagged %player1% and %player2% in combat."
   sound: entity.experience_orb.pickup
@@ -88,3 +103,32 @@ combat_tag_single_success:
 player_not_found:
   message: "&cPlayer %player% not found."
   sound: entity.villager.no
+
+# Combat removal command messages
+player_not_in_combat:
+  message: "&c%player% is not currently in combat!"
+  sound: entity.villager.no
+
+combat_remove_success:
+  message: "&#4CAF50Successfully removed %player% from combat!"
+  sound: entity.experience_orb.pickup
+
+world_not_found:
+  message: "&cWorld '%world%' not found!"
+  sound: entity.villager.no
+
+no_players_in_combat_world:
+  message: "&cNo players are in combat in world '%world%'!"
+  sound: entity.villager.no
+
+combat_remove_world_success:
+  message: "&#4CAF50Successfully removed %count% players from combat in world '%world%'!"
+  sound: entity.experience_orb.pickup
+
+no_players_in_combat_server:
+  message: "&cNo players are currently in combat on the server!"
+  sound: entity.villager.no
+
+combat_remove_all_success:
+  message: "&#4CAF50Successfully removed %count% players from combat server-wide!"
+  sound: entity.experience_orb.pickup

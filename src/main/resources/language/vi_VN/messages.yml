@@ -73,10 +73,25 @@ no_permission:
   message: "&cBạn không có quyền sử dụng lệnh này."
   sound: entity.villager.no
 
+help_message:
+  message: |
+    &8&m
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    &8                          &7&#F5F5DC&lDANH SÁCH LỆNH
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    &8» &#4A90E2/celestcombat reload &#F5F5DC- Tải lại cấu hình plugin
+    &8» &#4A90E2/celestcombat tag &#F5F5DC- Đánh dấu người chơi đang trong combat
+    &8» &#4A90E2/celestcombat removeTag &#F5F5DC- Gỡ trạng thái combat khỏi người chơi
+    &8» &#4A90E2/celestcombat removeTagWorld &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trong một thế giới
+    &8» &#4A90E2/celestcombat removeTagAll &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trên máy chủ
+    &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Reload command messages
 config_reloaded:
   message: "&#4CAF50Cấu hình CelestCombat đã được tải lại thành công."
   sound: entity.player.levelup
 
+# Combat tag command messages
 combat_tag_success:
   message: "&#4CAF50Đã đánh dấu %player1% và %player2% trong combat."
   sound: entity.experience_orb.pickup
@@ -88,3 +103,32 @@ combat_tag_single_success:
 player_not_found:
   message: "&cKhông tìm thấy người chơi."
   sound: entity.villager.no
+
+# Combat removal command messages
+player_not_in_combat:
+  message: "&c%player% hiện không đang trong combat!"
+  sound: entity.villager.no
+
+combat_remove_success:
+  message: "&#4CAF50Đã xóa %player% khỏi combat thành công!"
+  sound: entity.experience_orb.pickup
+
+world_not_found:
+  message: "&cKhông tìm thấy thế giới '%world%'!"
+  sound: entity.villager.no
+
+no_players_in_combat_world:
+  message: "&cKhông có người chơi nào đang trong combat ở thế giới '%world%'!"
+  sound: entity.villager.no
+
+combat_remove_world_success:
+  message: "&#4CAF50Đã xóa thành công %count% người chơi khỏi combat trong thế giới '%world%'!"
+  sound: entity.experience_orb.pickup
+
+no_players_in_combat_server:
+  message: "&cHiện không có người chơi nào đang trong combat trên máy chủ!"
+  sound: entity.villager.no
+
+combat_remove_all_success:
+  message: "&#4CAF50Đã xóa thành công %count% người chơi khỏi combat trên toàn máy chủ!"
+  sound: entity.experience_orb.pickup

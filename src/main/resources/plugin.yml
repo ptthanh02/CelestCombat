@@ -8,6 +8,8 @@ folia-supported: true
 
 soft-depend:
   - WorldGuard
+  - Multiverse-Core
+  - Worlds
 
 commands:
   celestcombat:
@@ -16,11 +18,8 @@ commands:
     aliases: [cc, combat]
 
 permissions:
-  celestcombat.command.reload:
-    description: Allows players to reload the plugin configuration
-    default: op
-  celestcombat.command.tag:
-    description: Allows players to manually tag players in combat
+  celestcombat.command.use:
+    description: Allows players to use all commands of CelestCombat
     default: op
   celestcombat.update.notify:
     description: Allows players to receive update notifications

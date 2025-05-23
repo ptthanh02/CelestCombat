@@ -4,7 +4,7 @@ import com.sk89q.worldguard.WorldGuard;
 import dev.nighter.celestCombat.bstats.Metrics;
 import dev.nighter.celestCombat.combat.CombatManager;
 import dev.nighter.celestCombat.combat.DeathAnimationManager;
-import dev.nighter.celestCombat.commands.CombatCommand;
+import dev.nighter.celestCombat.commands.CommandManager;
 import dev.nighter.celestCombat.configs.TimeFormatter;
 import dev.nighter.celestCombat.language.LanguageManager;
 import dev.nighter.celestCombat.language.MessageService;
@@ -18,7 +18,6 @@ import dev.nighter.celestCombat.updates.UpdateChecker;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.bukkit.Bukkit;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -34,13 +33,13 @@ public final class CelestCombat extends JavaPlugin {
     private ConfigUpdater configUpdater;
     private LanguageUpdater languageUpdater;
     private TimeFormatter timeFormatter;
+    private CommandManager commandManager;
     private CombatManager combatManager;
     private CombatListeners combatListeners;
     private EnderPearlListener enderPearlListener;
     private DeathAnimationManager deathAnimationManager;
     private WorldGuardHook worldGuardHook;
 
-    // WorldGuard support
     public static boolean hasWorldGuard = false;
 
     @Override
@@ -48,45 +47,31 @@ public final class CelestCombat extends JavaPlugin {
         long startTime = System.currentTimeMillis();
         instance = this;
 
-        // Save default config
         saveDefaultConfig();
-
-        // Check for protection plugins
         checkProtectionPlugins();
 
-        // Initialize language manager
-        languageManager = new LanguageManager(this,
-                LanguageManager.LanguageFileType.MESSAGES);
-        languageUpdater = new LanguageUpdater(this,
-                LanguageUpdater.LanguageFileType.MESSAGES);
+        languageManager = new LanguageManager(this, LanguageManager.LanguageFileType.MESSAGES);
+        languageUpdater = new LanguageUpdater(this, LanguageUpdater.LanguageFileType.MESSAGES);
         languageUpdater.checkAndUpdateLanguageFiles();
 
-        // Initialize services
         messageService = new MessageService(this, languageManager);
         updateChecker = new UpdateChecker(this);
         configUpdater = new ConfigUpdater(this);
         configUpdater.checkAndUpdateConfig();
         timeFormatter = new TimeFormatter(this);
 
-        // Initialize combat manager
         deathAnimationManager = new DeathAnimationManager(this);
         combatManager = new CombatManager(this);
 
-        // Register listeners
-        // CombatListeners
         combatListeners = new CombatListeners(this);
         getServer().getPluginManager().registerEvents(combatListeners, this);
 
-        // EnderPearlListener
         enderPearlListener = new EnderPearlListener(this, combatManager);
         getServer().getPluginManager().registerEvents(enderPearlListener, this);
 
-        // ItemRestrictionListener
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
-        // Register WorldGuard hook if available
         if (hasWorldGuard && getConfig().getBoolean("safezone_protection.enabled", true)) {
-            // Create a single instance of WorldGuardHook to avoid duplicate listeners
             worldGuardHook = new WorldGuardHook(this, combatManager);
             getServer().getPluginManager().registerEvents(worldGuardHook, this);
             debug("WorldGuard safezone protection enabled");
@@ -94,18 +79,11 @@ public final class CelestCombat extends JavaPlugin {
             getLogger().info("Found WorldGuard but safe zone barrier is disabled in config.");
         }
 
-        // Register commands
-        CombatCommand combatCommand = new CombatCommand(this);
-        PluginCommand command = getCommand("celestcombat");
-        if (command != null) {
-            command.setExecutor(combatCommand);
-            command.setTabCompleter(combatCommand);
-        }
+        commandManager = new CommandManager(this);
+        commandManager.registerCommands();
 
-        // Setup bStats metrics
         setupBtatsMetrics();
 
-        // Plugin startup message
         long loadTime = System.currentTimeMillis() - startTime;
         getLogger().info("CelestCombat has been enabled! (Loaded in " + loadTime + "ms)");
     }
@@ -124,7 +102,6 @@ public final class CelestCombat extends JavaPlugin {
             enderPearlListener.shutdown();
         }
 
-        // Shutdown WorldGuardHook properly
         if (worldGuardHook != null) {
             worldGuardHook.cleanup();
         }
@@ -133,7 +110,6 @@ public final class CelestCombat extends JavaPlugin {
     }
 
     private void checkProtectionPlugins() {
-        // Check for WorldGuard
         hasWorldGuard = isPluginEnabled("WorldGuard") && isWorldGuardAPIAvailable();
         if (hasWorldGuard) {
             getLogger().info("WorldGuard integration enabled successfully!");
