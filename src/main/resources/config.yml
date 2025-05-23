@@ -77,7 +77,7 @@ combat:
       - ELYTRA
 
 #---------------------------------------------------
-#              MOVEMENT RESTRICTIONS
+#              ENDER PEARL RESTRICTIONS
 #---------------------------------------------------
 enderpearl:
   # Refresh combat timer when player lands an ender pearl
@@ -96,6 +96,36 @@ enderpearl_cooldown:
   # Per-world settings (overrides global setting)
   worlds:
     minigames: false  # Example: cooldowns disabled in minigames world
+
+#---------------------------------------------------
+#              TRIDENT RESTRICTIONS
+#---------------------------------------------------
+trident:
+  # Refresh combat timer when trident lands (similar to enderpearl)
+  refresh_combat_on_land: false
+
+  # Worlds where tridents are completely banned
+  banned_worlds:
+    world_nether: true # Example: tridents banned in the nether
+    # Add more worlds as needed
+
+# Trident cooldown configuration
+trident_cooldown:
+  # Enable/disable trident cooldowns globally
+  enabled: true
+
+  # Cooldown duration (supports: s, m, h, d for seconds, minutes, hours, days)
+  duration: "10s"
+
+  # Only apply cooldown when player is in combat
+  in_combat_only: true
+
+  # Per-world cooldown settings (overrides global enabled setting)
+  worlds:
+    world: true          # Enable cooldown in overworld
+    world_nether: false  # Disable cooldown in nether
+    world_the_end: true  # Enable cooldown in end
+    # Add more worlds as needed
 
 #---------------------------------------------------
 #                  DEATH EFFECTS

@@ -12,6 +12,7 @@ import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
+import dev.nighter.celestCombat.listeners.TridentListener;
 import dev.nighter.celestCombat.updates.ConfigUpdater;
 import dev.nighter.celestCombat.updates.LanguageUpdater;
 import dev.nighter.celestCombat.updates.UpdateChecker;
@@ -37,6 +38,7 @@ public final class CelestCombat extends JavaPlugin {
     private CombatManager combatManager;
     private CombatListeners combatListeners;
     private EnderPearlListener enderPearlListener;
+    private TridentListener tridentListener;
     private DeathAnimationManager deathAnimationManager;
     private WorldGuardHook worldGuardHook;
 
@@ -69,6 +71,9 @@ public final class CelestCombat extends JavaPlugin {
         enderPearlListener = new EnderPearlListener(this, combatManager);
         getServer().getPluginManager().registerEvents(enderPearlListener, this);
 
+        tridentListener = new TridentListener(this, combatManager);
+        getServer().getPluginManager().registerEvents(tridentListener, this);
+
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
         if (hasWorldGuard && getConfig().getBoolean("safezone_protection.enabled", true)) {
@@ -100,6 +105,10 @@ public final class CelestCombat extends JavaPlugin {
 
         if (enderPearlListener != null) {
             enderPearlListener.shutdown();
+        }
+
+        if (tridentListener != null) {
+            tridentListener.shutdown();
         }
 
         if (worldGuardHook != null) {

@@ -43,6 +43,32 @@ combat_pearl_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ngọc Ender hồi: &#FFFFFF%pearl_time%s"
 
 # ------------------------------------------------------
+#                Trident messages
+# ------------------------------------------------------
+trident_banned:
+  message: "&cĐinh ba bị cấm trong thế giới này!"
+  sound: block.note_block.pling
+
+trident_cooldown:
+  action_bar: "&#4FC3F7Đinh ba đang trong thời gian hồi!"
+  sound: block.note_block.pling
+
+trident_only_countdown:
+  action_bar: "&#4FC3F7Đinh ba hồi: &#FFFFFF%time%s"
+
+# ------------------------------------------------------
+#              Combined countdown messages
+# ------------------------------------------------------
+combat_pearl_trident_countdown:
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s &#8B8B8B| &#E94E77Ngọc Ender: &#FFFFFF%pearl_time%s &#8B8B8B| &#4FC3F7Đinh ba: &#FFFFFF%trident_time%s"
+
+combat_trident_countdown:
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s &#8B8B8B| &#4FC3F7Đinh ba: &#FFFFFF%trident_time%s"
+
+pearl_trident_countdown:
+  action_bar: "&#E94E77Ngọc Ender: &#FFFFFF%pearl_time%s &#8B8B8B| &#4FC3F7Đinh ba: &#FFFFFF%trident_time%s"
+
+# ------------------------------------------------------
 #                Kill reward messages
 # ------------------------------------------------------
 kill_reward_received:

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class CombatManager {
     private final CelestCombat plugin;
@@ -24,6 +25,7 @@ public class CombatManager {
 
     @Getter private final Map<UUID, Long> enderPearlCooldowns;
     @Getter private final Map<String, Long> killRewardCooldowns = new ConcurrentHashMap<>();
+    @Getter private final Map<UUID, Long> tridentCooldowns = new ConcurrentHashMap<>();
 
     // Store cooldown configs by permission or group
     @Getter private final Map<String, Long> killRewardCooldownsByPermission = new ConcurrentHashMap<>();
@@ -47,7 +49,14 @@ public class CombatManager {
     private boolean useSamePlayerCooldown;
     private boolean useGlobalPlayerCooldown;
 
-    private boolean exemptAdminKick;
+    // Trident configuration cache
+    private long tridentCooldownTicks;
+    private long tridentCooldownSeconds;
+    private Map<String, Boolean> worldTridentSettings = new ConcurrentHashMap<>();
+    private boolean tridentInCombatOnly;
+    private boolean tridentEnabled;
+    private boolean refreshCombatOnTridentLand;
+    private Map<String, Boolean> worldTridentBannedSettings = new ConcurrentHashMap<>();
 
     // Cleanup task for expired cooldowns
     private Scheduler.Task cleanupTask;
@@ -71,20 +80,53 @@ public class CombatManager {
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
         this.refreshCombatOnPearlLand = plugin.getConfig().getBoolean("enderpearl.refresh_combat_on_land", false);
 
+        this.tridentCooldownTicks = plugin.getTimeFromConfig("trident_cooldown.duration", "10s");
+        this.tridentCooldownSeconds = tridentCooldownTicks / 20;
+        this.tridentEnabled = plugin.getConfig().getBoolean("trident_cooldown.enabled", true);
+        this.tridentInCombatOnly = plugin.getConfig().getBoolean("trident_cooldown.in_combat_only", true);
+        this.refreshCombatOnTridentLand = plugin.getConfig().getBoolean("trident.refresh_combat_on_land", false);
+
+        // Load per-world settings
+        loadWorldTridentSettings();
+
         // Load per-world settings
         loadWorldEnderPearlSettings();
 
         // Load kill reward settings
         loadKillRewardSettings();
 
-        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
-
         // Start the global countdown timer
         startGlobalCountdownTimer();
 
         // Start the cleanup task
         startCleanupTask();
+
+
     }
+
+    private void loadWorldTridentSettings() {
+        worldTridentSettings.clear();
+        worldTridentBannedSettings.clear();
+
+        // Load cooldown settings per world
+        if (plugin.getConfig().isConfigurationSection("trident_cooldown.worlds")) {
+            for (String worldName : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("trident_cooldown.worlds")).getKeys(false)) {
+                boolean enabled = plugin.getConfig().getBoolean("trident_cooldown.worlds." + worldName, true);
+                worldTridentSettings.put(worldName, enabled);
+            }
+        }
+
+        // Load banned settings per world
+        if (plugin.getConfig().isConfigurationSection("trident.banned_worlds")) {
+            for (String worldName : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("trident.banned_worlds")).getKeys(false)) {
+                boolean banned = plugin.getConfig().getBoolean("trident.banned_worlds." + worldName, false);
+                worldTridentBannedSettings.put(worldName, banned);
+            }
+        }
+
+        plugin.getLogger().info("Loaded world-specific trident settings: " + worldTridentSettings);
+    }
+
 
     private void loadKillRewardSettings() {
         // Basic cooldown settings
@@ -124,7 +166,12 @@ public class CombatManager {
         // Reload kill reward settings
         loadKillRewardSettings();
 
-        this.exemptAdminKick = plugin.getConfig().getBoolean("combat.exempt_admin_kick", true);
+        this.tridentCooldownTicks = plugin.getTimeFromConfig("trident_cooldown.duration", "10s");
+        this.tridentCooldownSeconds = tridentCooldownTicks / 20;
+        this.tridentEnabled = plugin.getConfig().getBoolean("trident_cooldown.enabled", true);
+        this.tridentInCombatOnly = plugin.getConfig().getBoolean("trident_cooldown.in_combat_only", true);
+        this.refreshCombatOnTridentLand = plugin.getConfig().getBoolean("trident.refresh_combat_on_land", false);
+        loadWorldTridentSettings();
     }
 
 
@@ -201,6 +248,11 @@ public class CombatManager {
                             Bukkit.getPlayer(entry.getKey()) == null
             );
 
+            tridentCooldowns.entrySet().removeIf(entry ->
+                    currentTime > entry.getValue() ||
+                            Bukkit.getPlayer(entry.getKey()) == null
+            );
+
         }, 0L, COUNTDOWN_INTERVAL);
     }
 
@@ -212,42 +264,66 @@ public class CombatManager {
                 currentTime <= playersInCombat.get(playerUUID);
         boolean hasPearlCooldown = enderPearlCooldowns.containsKey(playerUUID) &&
                 currentTime <= enderPearlCooldowns.get(playerUUID);
+        boolean hasTridentCooldown = tridentCooldowns.containsKey(playerUUID) &&
+                currentTime <= tridentCooldowns.get(playerUUID);
 
-        if (!inCombat && !hasPearlCooldown) {
+        if (!inCombat && !hasPearlCooldown && !hasTridentCooldown) {
             return;
         }
 
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("player", player.getName());
+
         if (inCombat) {
             int remainingCombatTime = getRemainingCombatTime(player, currentTime);
+            placeholders.put("combat_time", String.valueOf(remainingCombatTime));
 
-            if (hasPearlCooldown) {
-                // Both cooldowns active - show combined message
+            if (hasPearlCooldown && hasTridentCooldown) {
+                // All three cooldowns active - show combined message
                 int remainingPearlTime = getRemainingEnderPearlCooldown(player, currentTime);
+                int remainingTridentTime = getRemainingTridentCooldown(player, currentTime);
 
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("combat_time", String.valueOf(remainingCombatTime));
+                placeholders.put("pearl_time", String.valueOf(remainingPearlTime));
+                placeholders.put("trident_time", String.valueOf(remainingTridentTime));
+                plugin.getMessageService().sendMessage(player, "combat_pearl_trident_countdown", placeholders);
+            } else if (hasPearlCooldown) {
+                // Combat + pearl cooldown active
+                int remainingPearlTime = getRemainingEnderPearlCooldown(player, currentTime);
                 placeholders.put("pearl_time", String.valueOf(remainingPearlTime));
                 plugin.getMessageService().sendMessage(player, "combat_pearl_countdown", placeholders);
+            } else if (hasTridentCooldown) {
+                // Combat + trident cooldown active
+                int remainingTridentTime = getRemainingTridentCooldown(player, currentTime);
+                placeholders.put("trident_time", String.valueOf(remainingTridentTime));
+                plugin.getMessageService().sendMessage(player, "combat_trident_countdown", placeholders);
             } else {
                 // Only combat cooldown active
                 if (remainingCombatTime > 0) {
-                    Map<String, String> placeholders = new HashMap<>();
-                    placeholders.put("player", player.getName());
                     placeholders.put("time", String.valueOf(remainingCombatTime));
                     plugin.getMessageService().sendMessage(player, "combat_countdown", placeholders);
                 }
             }
-        } else if (hasPearlCooldown) {
-            // Player is not in combat but has pearl cooldown
-            // This handles the case where in_combat_only is false
+        } else if (hasPearlCooldown && hasTridentCooldown) {
+            // Both pearl and trident cooldowns but no combat
             int remainingPearlTime = getRemainingEnderPearlCooldown(player, currentTime);
+            int remainingTridentTime = getRemainingTridentCooldown(player, currentTime);
 
+            placeholders.put("pearl_time", String.valueOf(remainingPearlTime));
+            placeholders.put("trident_time", String.valueOf(remainingTridentTime));
+            plugin.getMessageService().sendMessage(player, "pearl_trident_countdown", placeholders);
+        } else if (hasPearlCooldown) {
+            // Only pearl cooldown active
+            int remainingPearlTime = getRemainingEnderPearlCooldown(player, currentTime);
             if (remainingPearlTime > 0) {
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
                 placeholders.put("time", String.valueOf(remainingPearlTime));
                 plugin.getMessageService().sendMessage(player, "pearl_only_countdown", placeholders);
+            }
+        } else if (hasTridentCooldown) {
+            // Only trident cooldown active
+            int remainingTridentTime = getRemainingTridentCooldown(player, currentTime);
+            if (remainingTridentTime > 0) {
+                placeholders.put("time", String.valueOf(remainingTridentTime));
+                plugin.getMessageService().sendMessage(player, "trident_only_countdown", placeholders);
             }
         }
     }
@@ -535,140 +611,6 @@ public class CombatManager {
         plugin.debug("Set specific kill reward cooldown for " + killer.getName() + " killing " + victim.getName() + " until " + expirationTime);
     }
 
-    /**
-     * Checks if a player is on kill reward cooldown
-     *
-     * @param killer The player who killed another player
-     * @param victim The player who was killed
-     * @return True if the killer is on cooldown for the victim
-     */
-    public boolean isKillRewardOnCooldown(Player killer, Player victim) {
-        if (killer == null || victim == null) return false;
-
-        long currentTime = System.currentTimeMillis();
-
-        // Check global cooldown first if enabled
-        if (useGlobalPlayerCooldown) {
-            String globalKey = killer.getUniqueId() + ":global";
-            if (killRewardCooldowns.containsKey(globalKey)) {
-                long cooldownEndTime = killRewardCooldowns.get(globalKey);
-                if (currentTime <= cooldownEndTime) {
-                    return true;
-                } else {
-                    // Clean up expired cooldown
-                    killRewardCooldowns.remove(globalKey);
-                }
-            }
-        }
-
-        // Check specific player cooldown
-        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
-        if (!killRewardCooldowns.containsKey(specificKey)) {
-            return false;
-        }
-
-        long cooldownEndTime = killRewardCooldowns.get(specificKey);
-        if (currentTime > cooldownEndTime) {
-            // Clean up expired cooldown
-            killRewardCooldowns.remove(specificKey);
-            return false;
-        }
-        plugin.debug("Kill reward cooldown for " + killer.getName() + " killing " + victim.getName() + " is active until " + cooldownEndTime);
-
-        return true;
-    }
-
-    /**
-     * Formats milliseconds into a human-readable time string
-     *
-     * @param timeMs Time in milliseconds
-     * @return Formatted time string (e.g., "2d 5h 30m 10s")
-     */
-    private String formatTimeRemaining(long timeMs) {
-        if (timeMs <= 0) return "0s";
-
-        long seconds = timeMs / 1000;
-        long minutes = seconds / 60;
-        long hours = minutes / 60;
-        long days = hours / 24;
-
-        seconds %= 60;
-        minutes %= 60;
-        hours %= 24;
-
-        StringBuilder result = new StringBuilder();
-        if (days > 0) result.append(days).append("d ");
-        if (hours > 0) result.append(hours).append("h ");
-        if (minutes > 0) result.append(minutes).append("m ");
-        if (seconds > 0 || result.length() == 0) result.append(seconds).append("s");
-
-        return result.toString().trim();
-    }
-
-    /**
-     * Gets the remaining kill reward cooldown for a killer-victim pair
-     *
-     * @param killer The player who killed another player
-     * @param victim The player who was killed
-     * @return Remaining cooldown time in milliseconds, or 0 if no cooldown
-     */
-    public long getRemainingKillRewardCooldown(Player killer, Player victim) {
-        if (killer == null || victim == null) return 0;
-
-        long currentTime = System.currentTimeMillis();
-        long remainingTime = 0;
-
-        // Check global cooldown first if enabled
-        if (useGlobalPlayerCooldown) {
-            String globalKey = killer.getUniqueId() + ":global";
-            if (killRewardCooldowns.containsKey(globalKey)) {
-                long cooldownEndTime = killRewardCooldowns.get(globalKey);
-                if (currentTime <= cooldownEndTime) {
-                    remainingTime = Math.max(remainingTime, cooldownEndTime - currentTime);
-                }
-            }
-        }
-
-        // Check specific player cooldown
-        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
-        if (killRewardCooldowns.containsKey(specificKey)) {
-            long cooldownEndTime = killRewardCooldowns.get(specificKey);
-            if (currentTime <= cooldownEndTime) {
-                remainingTime = Math.max(remainingTime, cooldownEndTime - currentTime);
-            }
-        }
-
-        return remainingTime;
-    }
-
-    /**
-     * Formats remaining kill reward cooldown time for a killer-victim pair
-     *
-     * @param killer The player who killed another player
-     * @param victim The player who was killed
-     * @return Formatted time string, or "None" if no cooldown
-     */
-    public String getFormattedKillRewardCooldown(Player killer, Player victim) {
-        long remainingMs = getRemainingKillRewardCooldown(killer, victim);
-        if (remainingMs <= 0) {
-            return "None";
-        }
-        return formatTimeRemaining(remainingMs);
-    }
-
-    /**
-     * Clears all kill reward cooldowns for a specific player
-     *
-     * @param player The player to clear cooldowns for
-     */
-    public void clearKillRewardCooldowns(Player player) {
-        if (player == null) return;
-
-        UUID playerUUID = player.getUniqueId();
-        killRewardCooldowns.entrySet().removeIf(entry ->
-                entry.getKey().startsWith(playerUUID.toString() + ":"));
-    }
-
     public boolean shouldDisableFlight(Player player) {
         if (player == null) return false;
 
@@ -684,6 +626,106 @@ public class CombatManager {
 
         return true;
     }
+
+    public void setTridentCooldown(Player player) {
+        if (player == null) return;
+
+        // Only set cooldown if enabled in config
+        if (!tridentEnabled) {
+            return;
+        }
+
+        // Check world-specific settings
+        String worldName = player.getWorld().getName();
+        if (worldTridentSettings.containsKey(worldName) && !worldTridentSettings.get(worldName)) {
+            return; // Don't set cooldown in this world
+        }
+
+        // Check if we should only apply cooldown in combat
+        if (tridentInCombatOnly && !isInCombat(player)) {
+            return;
+        }
+
+        tridentCooldowns.put(player.getUniqueId(),
+                System.currentTimeMillis() + (tridentCooldownSeconds * 1000L));
+    }
+
+    public boolean isTridentOnCooldown(Player player) {
+        if (player == null) return false;
+
+        // If all trident cooldowns are disabled globally, always return false
+        if (!tridentEnabled) {
+            return false;
+        }
+
+        // Check world-specific settings
+        String worldName = player.getWorld().getName();
+        if (worldTridentSettings.containsKey(worldName) && !worldTridentSettings.get(worldName)) {
+            return false; // Cooldown disabled for this specific world
+        }
+
+        // Check if we should only apply cooldown in combat
+        if (tridentInCombatOnly && !isInCombat(player)) {
+            return false;
+        }
+
+        UUID playerUUID = player.getUniqueId();
+        if (!tridentCooldowns.containsKey(playerUUID)) {
+            return false;
+        }
+
+        long cooldownEndTime = tridentCooldowns.get(playerUUID);
+        long currentTime = System.currentTimeMillis();
+
+        if (currentTime > cooldownEndTime) {
+            tridentCooldowns.remove(playerUUID);
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean isTridentBanned(Player player) {
+        if (player == null) return false;
+
+        // Check world-specific ban settings
+        String worldName = player.getWorld().getName();
+        return worldTridentBannedSettings.getOrDefault(worldName, false);
+    }
+
+    public void refreshCombatOnTridentLand(Player player) {
+        if (player == null || !refreshCombatOnTridentLand) return;
+
+        // Only refresh if player is already in combat
+        if (!isInCombat(player)) return;
+
+        UUID playerUUID = player.getUniqueId();
+        long newEndTime = System.currentTimeMillis() + (combatDurationSeconds * 1000L);
+        long currentEndTime = playersInCombat.getOrDefault(playerUUID, 0L);
+
+        // Only extend the combat time, don't shorten it
+        if (newEndTime > currentEndTime) {
+            playersInCombat.put(playerUUID, newEndTime);
+
+            // Debug message if debug is enabled
+            plugin.debug("Refreshed combat time for " + player.getName() + " due to trident landing");
+        }
+    }
+
+    public int getRemainingTridentCooldown(Player player) {
+        return getRemainingTridentCooldown(player, System.currentTimeMillis());
+    }
+
+    private int getRemainingTridentCooldown(Player player, long currentTime) {
+        if (player == null) return 0;
+
+        UUID playerUUID = player.getUniqueId();
+        if (!tridentCooldowns.containsKey(playerUUID)) return 0;
+
+        long endTime = tridentCooldowns.get(playerUUID);
+        return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
+    }
+
 
     public void shutdown() {
         // Cancel the global countdown task
@@ -706,5 +748,6 @@ public class CombatManager {
         combatOpponents.clear();
         enderPearlCooldowns.clear();
         killRewardCooldowns.clear();
+        tridentCooldowns.clear();
     }
 }
