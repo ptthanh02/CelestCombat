@@ -66,8 +66,8 @@ public class KillRewardManager {
         this.useGlobalCooldown = config.getBoolean("kill_rewards.cooldown.use_global_cooldown", false);
         this.useSamePlayerCooldown = config.getBoolean("kill_rewards.cooldown.use_same_player_cooldown", true);
 
-        this.globalCooldownDuration = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
-        this.samePlayerCooldownDuration = plugin.getTimeFromConfig("kill_rewards.cooldown.same_player_duration", "1d");
+        this.globalCooldownDuration = plugin.getTimeFromConfigInMilliseconds("kill_rewards.cooldown.duration", "1d");
+        this.samePlayerCooldownDuration = plugin.getTimeFromConfigInMilliseconds("kill_rewards.cooldown.same_player_duration", "1d");
 
         plugin.debug("KillRewardManager config loaded - Enabled: " + enabled +
                 ", Global cooldown: " + useGlobalCooldown +
@@ -374,39 +374,6 @@ public class KillRewardManager {
                 entry.getKey().contains(playerUUID));
 
         plugin.debug("Cleared all kill reward cooldowns for " + player.getName());
-    }
-
-    /**
-     * Gets statistics about current cooldowns
-     */
-    public Map<String, Object> getCooldownStats() {
-        Map<String, Object> stats = new HashMap<>();
-        long currentTime = System.currentTimeMillis();
-
-        int totalCooldowns = killRewardCooldowns.size();
-        int activeCooldowns = 0;
-        int globalCooldowns = 0;
-        int playerCooldowns = 0;
-
-        for (Map.Entry<String, Long> entry : killRewardCooldowns.entrySet()) {
-            if (entry.getValue() > currentTime) {
-                activeCooldowns++;
-
-                if (entry.getKey().startsWith(GLOBAL_COOLDOWN_PREFIX)) {
-                    globalCooldowns++;
-                } else if (entry.getKey().startsWith(PLAYER_COOLDOWN_PREFIX)) {
-                    playerCooldowns++;
-                }
-            }
-        }
-
-        stats.put("total", totalCooldowns);
-        stats.put("active", activeCooldowns);
-        stats.put("global", globalCooldowns);
-        stats.put("player_specific", playerCooldowns);
-        stats.put("enabled", enabled);
-
-        return stats;
     }
 
     /**

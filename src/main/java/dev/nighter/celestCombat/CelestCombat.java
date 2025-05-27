@@ -157,6 +157,11 @@ public final class CelestCombat extends JavaPlugin {
         return timeFormatter.getTimeFromConfig(path, defaultValue);
     }
 
+    public long getTimeFromConfigInMilliseconds(String path, String defaultValue) {
+        long ticks = timeFormatter.getTimeFromConfig(path, defaultValue);
+        return ticks * 50L; // Convert ticks to milliseconds
+    }
+
     public void refreshTimeCache() {
         if (timeFormatter != null) {
             timeFormatter.clearCache();

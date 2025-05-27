@@ -105,11 +105,14 @@ help_message:
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     &8                          &7&#F5F5DC&lDANH SÁCH LỆNH
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    &8» &#4A90E2/celestcombat reload &#F5F5DC- Tải lại cấu hình plugin
-    &8» &#4A90E2/celestcombat tag &#F5F5DC- Đánh dấu người chơi đang trong combat
-    &8» &#4A90E2/celestcombat removeTag &#F5F5DC- Gỡ trạng thái combat khỏi người chơi
-    &8» &#4A90E2/celestcombat removeTagWorld &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trong một thế giới
-    &8» &#4A90E2/celestcombat removeTagAll &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trên máy chủ
+    &8» &#4A90E2/cc reload &#F5F5DC- Tải lại cấu hình plugin
+    &8» &#4A90E2/cc tag &#F5F5DC- Đánh dấu người chơi đang trong combat
+    &8» &#4A90E2/cc removeTag &#F5F5DC- Gỡ trạng thái combat khỏi người chơi
+    &8» &#4A90E2/cc removeTagWorld &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trong một thế giới
+    &8» &#4A90E2/cc removeTagAll &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trên máy chủ
+    &8» &#4A90E2/cc checkKillCooldown &#F5F5DC- Kiểm tra thời gian hồi cooldown phần thưởng giết người chơi
+    &8» &#4A90E2/cc clearKillCooldown &#F5F5DC- Xóa thời gian hồi cooldown phần thưởng giết của người chơi
+    &8» &#4A90E2/cc clearallKillCooldowns &#F5F5DC- Xóa tất cả thời gian hồi cooldown phần thưởng giết trên máy chủ
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Reload command messages
@@ -127,7 +130,7 @@ combat_tag_single_success:
   sound: entity.experience_orb.pickup
 
 player_not_found:
-  message: "&cKhông tìm thấy người chơi."
+  message: "&cKhông tìm thấy người chơi %player%."
   sound: entity.villager.no
 
 # Combat removal command messages
@@ -158,3 +161,33 @@ no_players_in_combat_server:
 combat_remove_all_success:
   message: "&#4CAF50Đã xóa thành công %count% người chơi khỏi combat trên toàn máy chủ!"
   sound: entity.experience_orb.pickup
+
+# Kill cooldown command messages
+clear_cooldown_success:
+  message: "&#4CAF50Đã xóa thành công tất cả thời gian hồi cooldown phần thưởng giết của %player%!"
+  sound: entity.experience_orb.pickup
+
+clear_all_cooldowns_success:
+  message: "&#4CAF50Đã xóa thành công tất cả %count% thời gian hồi cooldown phần thưởng giết!"
+  sound: entity.experience_orb.pickup
+
+no_cooldowns_to_clear:
+  message: "&cKhông có thời gian hồi cooldown phần thưởng giết nào để xóa!"
+  sound: entity.villager.no
+
+# Kill cooldown check messages
+no_kill_cooldown:
+  message: "&#4CAF50%player% không có thời gian hồi cooldown phần thưởng giết đang hoạt động"
+  sound: entity.experience_orb.pickup
+
+no_kill_cooldown_target:
+  message: "&#4CAF50%player% không có thời gian hồi cooldown phần thưởng giết đang hoạt động cho %target%"
+  sound: entity.experience_orb.pickup
+
+kill_cooldown_remaining:
+  message: "&e%player% còn %time% thời gian hồi cooldown phần thưởng giết"
+  sound: block.note_block.pling
+
+kill_cooldown_remaining_target:
+  message: "&e%player% còn %time% thời gian hồi cooldown phần thưởng giết cho %target%"
+  sound: block.note_block.pling

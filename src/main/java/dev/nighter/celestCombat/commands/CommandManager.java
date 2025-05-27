@@ -29,6 +29,9 @@ public class CommandManager implements CommandExecutor {
         registerCommand("removeTag", new RemoveTagCommand(plugin));
         registerCommand("removeTagWorld", new RemoveTagWorldCommand(plugin));
         registerCommand("removeTagAll", new RemoveTagAllCommand(plugin));
+        registerCommand("checkKillCooldown", new CheckKillCooldownCommand(plugin));
+        registerCommand("clearKillCooldown", new ClearKillCooldownCommand(plugin));
+        registerCommand("clearAllKillCooldowns", new ClearAllKillCooldownsCommand(plugin));
 
         // Register main command handler
         PluginCommand mainCommand = plugin.getCommand("celestcombat");
