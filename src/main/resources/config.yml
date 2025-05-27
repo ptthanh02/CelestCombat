@@ -152,33 +152,29 @@ kill_rewards:
   # Commands executed when player gets a kill
   # Variables: %killer% = killer's name, %victim% = victim's name
   commands:
-    - donutcratecore shards give %killer% 10
+    - "donutcratecore shards give %killer% 10"
+    - "say %killer% eliminated %victim%!"
+
   cooldown:
-    # If true, killing any player puts all kill rewards on cooldown
-    # If true, same_player_duration will be ignored and cooldown will be global
-    # If false, cooldowns are tracked per-victim using the same_player_duration
+    # Global cooldown system
+    # If true, killing any player puts ALL kill rewards on cooldown for this player
+    # This means after one kill, the player must wait before earning rewards from ANY kill
     use_global_cooldown: false
 
-    # How often rewards can be earned
-    # Supports s (seconds), m (minutes), h (hours), d (days)
+    # Duration for global cooldown (only used if use_global_cooldown is true)
+    # Supports: s (seconds), m (minutes), h (hours), d (days)
     # Examples: 30s, 5m, 2h, 1d
     duration: 1d
 
-    # Controls cooldown behavior for killing the same player repeatedly
-    # Only cooldown when killing the same player, different players are not affected
-    # use_global_cooldown must be false for this to work
+    # Same-player cooldown system
+    # If true, cooldowns are tracked per victim (player can kill different players for rewards)
+    # If false, no same-player cooldowns are enforced
+    # Note: use_global_cooldown takes priority over this setting
     use_same_player_cooldown: true
-    same_player_duration: 1d
 
-    # Permission-based cooldowns
-    # When enabled, players with specific permissions get different cooldowns
-    # Permission format: celestcombat.cooldown.[key] (e.g., celestcombat.cooldown.vip)
-    # Permission-based cooldowns always override the default duration when applicable
-    use_permission_cooldowns: false
-    permissions:
-      vip: 12h
-      mvp: 6h
-      elite: 3h
+    # Duration for same-player cooldowns (only used if use_same_player_cooldown is true)
+    # This is how long a player must wait before earning rewards from killing the SAME victim again
+    same_player_duration: 1d
 
 #---------------------------------------------------
 #              WORLDGUARD INTEGRATION
@@ -199,3 +195,7 @@ safezone_protection:
 
   # How tall the barriers are
   barrier_height: 3
+
+  # Push force when player accidentally go inside the barrier blocks
+  # Higher values = stronger push back, lower values = gentler push
+  push_back_force: 0.6

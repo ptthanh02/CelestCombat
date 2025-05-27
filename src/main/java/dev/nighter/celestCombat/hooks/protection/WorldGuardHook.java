@@ -55,6 +55,7 @@ public class WorldGuardHook implements Listener {
     private int barrierDetectionRadius;
     private int barrierHeight;
     private Material barrierMaterial;
+    private double pushBackForce;
 
     // Cache for performance optimization
     private final Map<String, Boolean> safeZoneCache = new ConcurrentHashMap<>();
@@ -93,6 +94,7 @@ public class WorldGuardHook implements Listener {
         this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
         this.barrierMaterial = loadBarrierMaterial();
+        this.pushBackForce = plugin.getConfig().getDouble("safezone_protection.push_back_force", 0.6);
 
         // Clear cache when config reloads
         safeZoneCache.clear();
@@ -368,7 +370,7 @@ public class WorldGuardHook implements Listener {
         Vector direction = from.toVector().subtract(to.toVector()).normalize();
 
         // Amplify the push slightly (adjustable force)
-        direction.multiply(0.6);
+        direction.multiply(pushBackForce);
 
         // Create a new location to teleport the player to
         // This is based on their current location plus a small push back

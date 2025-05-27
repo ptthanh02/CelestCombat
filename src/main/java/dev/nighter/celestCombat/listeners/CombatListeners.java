@@ -2,7 +2,6 @@ package dev.nighter.celestCombat.listeners;
 
 import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.combat.CombatManager;
-import dev.nighter.celestCombat.language.MessageService;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -27,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 public class CombatListeners implements Listener {
     private final CelestCombat plugin;
     private final CombatManager combatManager;
-    private final MessageService messageService;
     private final Map<UUID, Boolean> playerLoggedOutInCombat = new ConcurrentHashMap<>();
     // Add a map to track the last damage source for each player
     private final Map<UUID, UUID> lastDamageSource = new ConcurrentHashMap<>();
@@ -39,7 +37,6 @@ public class CombatListeners implements Listener {
     public CombatListeners(CelestCombat plugin) {
         this.plugin = plugin;
         this.combatManager = plugin.getCombatManager();
-        this.messageService = plugin.getMessageService();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -128,7 +125,7 @@ public class CombatListeners implements Listener {
                 combatManager.punishCombatLogout(player);
 
                 if (opponent != null && opponent.isOnline()) {
-                    giveKillRewards(opponent, player);
+                    plugin.getKillRewardManager().giveKillReward(opponent, player);
                     plugin.getDeathAnimationManager().performDeathAnimation(player, opponent);
                 } else {
                     plugin.getDeathAnimationManager().performDeathAnimation(player, null);
@@ -150,8 +147,8 @@ public class CombatListeners implements Listener {
 
         // If player directly killed by another player
         if (killer != null && !killer.equals(victim)) {
-            // Execute kill reward commands
-            giveKillRewards(killer, victim);
+            // Execute kill reward commands using KillRewardManager
+            plugin.getKillRewardManager().giveKillReward(killer, victim);
 
             // Perform death animation
             plugin.getDeathAnimationManager().performDeathAnimation(victim, killer);
@@ -167,7 +164,7 @@ public class CombatListeners implements Listener {
             // Check if we have an opponent or a recent damage source
             if (opponent != null && opponent.isOnline()) {
                 // Give rewards to the combat opponent
-                giveKillRewards(opponent, victim);
+                plugin.getKillRewardManager().giveKillReward(opponent, victim);
                 plugin.getDeathAnimationManager().performDeathAnimation(victim, opponent);
             } else if (lastDamageSource.containsKey(victimId)) {
                 // Try to get the last player who damaged this player
@@ -175,7 +172,7 @@ public class CombatListeners implements Listener {
                 Player lastAttacker = plugin.getServer().getPlayer(lastAttackerUuid);
 
                 if (lastAttacker != null && lastAttacker.isOnline() && !lastAttacker.equals(victim)) {
-                    giveKillRewards(lastAttacker, victim);
+                    plugin.getKillRewardManager().giveKillReward(lastAttacker, victim);
                     plugin.getDeathAnimationManager().performDeathAnimation(victim, lastAttacker);
                 } else {
                     // No valid attacker found
@@ -202,58 +199,6 @@ public class CombatListeners implements Listener {
             // Clean up any stale damage tracking
             lastDamageSource.remove(victimId);
             lastDamageTime.remove(victimId);
-        }
-    }
-
-    private void giveKillRewards(Player killer, Player victim) {
-        if (killer == null || victim == null) {
-            return;
-        }
-
-        // Prevent self-kill rewards
-        if (killer.getUniqueId().equals(victim.getUniqueId())) {
-            return;
-        }
-
-        if (!plugin.getConfig().getBoolean("kill_rewards.enabled", false)) {
-            return;
-        }
-
-        // Flag to track if at least one command executed successfully
-        boolean anyCommandSuccessful = false;
-
-        // Execute reward commands
-        List<String> commands = plugin.getConfig().getStringList("kill_rewards.commands");
-        for (String command : commands) {
-            // Replace placeholders in command
-            String finalCommand = command
-                    .replace("%killer%", killer.getName())
-                    .replace("%victim%", victim.getName());
-
-            // Execute the command as the console with try-catch to handle potential errors
-            try {
-                plugin.getServer().dispatchCommand(
-                        plugin.getServer().getConsoleSender(),
-                        finalCommand
-                );
-                // If we reached here, the command executed without throwing an exception
-                anyCommandSuccessful = true;
-            } catch (Exception e) {
-                // Log the error
-                plugin.getLogger().warning("Failed to execute kill reward command: " + finalCommand);
-                plugin.getLogger().warning("Error: " + e.getMessage());
-            }
-        }
-
-        // Set the cooldown after giving rewards
-        combatManager.setKillRewardCooldown(killer, victim);
-
-        // Only notify the killer about rewards if at least one command succeeded
-        if (anyCommandSuccessful) {
-            Map<String, String> placeholders = new HashMap<>();
-            placeholders.put("killer", killer.getName());
-            placeholders.put("victim", victim.getName());
-            messageService.sendMessage(killer, "kill_reward_received", placeholders);
         }
     }
 

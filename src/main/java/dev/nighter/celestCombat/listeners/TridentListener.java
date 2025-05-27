@@ -4,7 +4,9 @@ import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.Scheduler;
 import dev.nighter.celestCombat.combat.CombatManager;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
@@ -14,6 +16,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerRiptideEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -32,6 +35,9 @@ public class TridentListener implements Listener {
     // Track thrown tridents to their player owners
     private final Map<Integer, UUID> activeTridents = new ConcurrentHashMap<>();
 
+    // Store original locations for riptide rollback
+    private final Map<UUID, Location> riptideOriginalLocations = new ConcurrentHashMap<>();
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onTridentUse(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -45,26 +51,59 @@ public class TridentListener implements Listener {
             // Check if trident usage is banned in this world
             if (combatManager.isTridentBanned(player)) {
                 event.setCancelled(true);
-
-                // Send banned message
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                plugin.getMessageService().sendMessage(player, "trident_banned", placeholders);
+                sendBannedMessage(player);
                 return;
             }
 
-            // Check if trident is on cooldown
-            if (combatManager.isTridentOnCooldown(player)) {
-                event.setCancelled(true);
-
-                // Send cooldown message
-                int remainingTime = combatManager.getRemainingTridentCooldown(player);
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("time", String.valueOf(remainingTime));
-                plugin.getMessageService().sendMessage(player, "trident_cooldown", placeholders);
+            // Handle riptide tridents differently - we need to prevent the interaction entirely
+            if (item.containsEnchantment(Enchantment.RIPTIDE)) {
+                if (combatManager.isTridentOnCooldown(player)) {
+                    event.setCancelled(true);
+                    sendCooldownMessage(player);
+                    return;
+                } else {
+                    // Store the player's location before riptide for potential rollback
+                    riptideOriginalLocations.put(player.getUniqueId(), player.getLocation().clone());
+                }
+            } else {
+                // Handle non-riptide tridents
+                if (combatManager.isTridentOnCooldown(player)) {
+                    event.setCancelled(true);
+                    sendCooldownMessage(player);
+                }
             }
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onRiptideUse(PlayerRiptideEvent event) {
+        Player player = event.getPlayer();
+
+        // Check if trident usage is banned in this world
+        if (combatManager.isTridentBanned(player)) {
+            sendBannedMessage(player);
+            rollbackRiptide(player);
+            return;
+        }
+
+        // Check if trident is on cooldown
+        if (combatManager.isTridentOnCooldown(player)) {
+            sendCooldownMessage(player);
+            rollbackRiptide(player);
+            return;
+        }
+
+        // Set cooldown for riptide usage
+        combatManager.setTridentCooldown(player);
+
+        // Start displaying the countdown
+        startTridentCountdown(player);
+
+        // Refresh combat on riptide usage if enabled
+        combatManager.refreshCombatOnTridentLand(player);
+
+        // Clean up the stored location
+        riptideOriginalLocations.remove(player.getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -75,26 +114,16 @@ public class TridentListener implements Listener {
             // Check if trident usage is banned in this world
             if (combatManager.isTridentBanned(player)) {
                 event.setCancelled(true);
-
-                // Send banned message
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                plugin.getMessageService().sendMessage(player, "trident_banned", placeholders);
+                sendBannedMessage(player);
                 return;
             }
 
             // Check if trident is on cooldown
             if (combatManager.isTridentOnCooldown(player)) {
                 event.setCancelled(true);
-
-                // Send cooldown message
-                int remainingTime = combatManager.getRemainingTridentCooldown(player);
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("player", player.getName());
-                placeholders.put("time", String.valueOf(remainingTime));
-                plugin.getMessageService().sendMessage(player, "trident_cooldown", placeholders);
+                sendCooldownMessage(player);
             } else {
-                // Set cooldown when player successfully launches a trident
+                // Set cooldown when player successfully launches a trident (non-riptide)
                 combatManager.setTridentCooldown(player);
 
                 // Start displaying the countdown for trident cooldown
@@ -122,6 +151,30 @@ public class TridentListener implements Listener {
                     combatManager.refreshCombatOnTridentLand(player);
                 }
             }
+        }
+    }
+
+    private void rollbackRiptide(Player player) {
+        Location originalLocation = riptideOriginalLocations.remove(player.getUniqueId());
+
+        if (originalLocation != null) {
+            // Method 2: Alternative approach - counter the velocity after a short delay
+            Scheduler.runTaskLater(() -> {
+                if (player.isOnline()) {
+                    // Stop any remaining velocity
+                    player.setVelocity(player.getVelocity().multiply(0));
+
+                    // Ensure they're at the original location
+                    if (player.getLocation().distance(originalLocation) > 5) {
+                        player.teleport(originalLocation);
+                    }
+                }
+            }, 2L);
+        } else {
+            // Fallback: just stop their velocity and add effects
+            Scheduler.runTask(() -> {
+                player.setVelocity(player.getVelocity().multiply(0));
+            });
         }
     }
 
@@ -188,6 +241,26 @@ public class TridentListener implements Listener {
     }
 
     /**
+     * Helper method to send banned message
+     */
+    private void sendBannedMessage(Player player) {
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("player", player.getName());
+        plugin.getMessageService().sendMessage(player, "trident_banned", placeholders);
+    }
+
+    /**
+     * Helper method to send cooldown message
+     */
+    private void sendCooldownMessage(Player player) {
+        int remainingTime = combatManager.getRemainingTridentCooldown(player);
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("player", player.getName());
+        placeholders.put("time", String.valueOf(remainingTime));
+        plugin.getMessageService().sendMessage(player, "trident_cooldown", placeholders);
+    }
+
+    /**
      * Cleanup method to cancel all tasks when the plugin is disabled.
      * Call this from your main plugin's onDisable method.
      */
@@ -195,5 +268,6 @@ public class TridentListener implements Listener {
         tridentCountdownTasks.values().forEach(Scheduler.Task::cancel);
         tridentCountdownTasks.clear();
         activeTridents.clear();
+        riptideOriginalLocations.clear();
     }
 }

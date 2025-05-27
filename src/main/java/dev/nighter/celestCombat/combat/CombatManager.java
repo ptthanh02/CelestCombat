@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 public class CombatManager {
     private final CelestCombat plugin;
@@ -24,11 +23,7 @@ public class CombatManager {
     private static final long COUNTDOWN_INTERVAL = 20L; // 1 second in ticks
 
     @Getter private final Map<UUID, Long> enderPearlCooldowns;
-    @Getter private final Map<String, Long> killRewardCooldowns = new ConcurrentHashMap<>();
     @Getter private final Map<UUID, Long> tridentCooldowns = new ConcurrentHashMap<>();
-
-    // Store cooldown configs by permission or group
-    @Getter private final Map<String, Long> killRewardCooldownsByPermission = new ConcurrentHashMap<>();
 
     // Combat configuration cache to avoid repeated config lookups
     private long combatDurationTicks;
@@ -40,14 +35,6 @@ public class CombatManager {
     private boolean enderPearlInCombatOnly;
     private boolean enderPearlEnabled;
     private boolean refreshCombatOnPearlLand;
-
-    // Kill reward configuration
-    private long killRewardCooldownTicks;
-    private long killRewardCooldownSeconds;
-    private long samePlayerKillRewardCooldownTicks; // New for same-player cooldown
-    private boolean usePermissionBasedCooldowns;
-    private boolean useSamePlayerCooldown;
-    private boolean useGlobalPlayerCooldown;
 
     // Trident configuration cache
     private long tridentCooldownTicks;
@@ -92,16 +79,8 @@ public class CombatManager {
         // Load per-world settings
         loadWorldEnderPearlSettings();
 
-        // Load kill reward settings
-        loadKillRewardSettings();
-
         // Start the global countdown timer
         startGlobalCountdownTimer();
-
-        // Start the cleanup task
-        startCleanupTask();
-
-
     }
 
     private void loadWorldTridentSettings() {
@@ -124,30 +103,7 @@ public class CombatManager {
             }
         }
 
-        plugin.getLogger().info("Loaded world-specific trident settings: " + worldTridentSettings);
-    }
-
-
-    private void loadKillRewardSettings() {
-        // Basic cooldown settings
-        this.killRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.duration", "1d");
-        this.killRewardCooldownSeconds = killRewardCooldownTicks / 20;
-
-        // Advanced cooldown settings
-        this.useSamePlayerCooldown = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_same_player_cooldown", true);
-        this.samePlayerKillRewardCooldownTicks = plugin.getTimeFromConfig("kill_rewards.cooldown.same_player_duration", "1d");
-
-        this.useGlobalPlayerCooldown = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_global_cooldown", false);
-
-        // Permission-based cooldowns
-        this.usePermissionBasedCooldowns = plugin.getConfig().getBoolean("kill_rewards.cooldown.use_permission_cooldowns", false);
-        if (usePermissionBasedCooldowns && plugin.getConfig().isConfigurationSection("kill_rewards.cooldown.permissions")) {
-            for (String perm : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("kill_rewards.cooldown.permissions")).getKeys(false)) {
-                String path = "kill_rewards.cooldown.permissions." + perm;
-                long permCooldown = plugin.getTimeFromConfig(path, "1d");
-                killRewardCooldownsByPermission.put(perm, permCooldown);
-            }
-        }
+        // plugin.getLogger().info("Loaded world-specific trident settings: " + worldTridentSettings);
     }
 
     public void reloadConfig() {
@@ -162,9 +118,6 @@ public class CombatManager {
         this.enderPearlInCombatOnly = plugin.getConfig().getBoolean("enderpearl_cooldown.in_combat_only", true);
         this.refreshCombatOnPearlLand = plugin.getConfig().getBoolean("enderpearl.refresh_combat_on_land", false);
         loadWorldEnderPearlSettings();
-
-        // Reload kill reward settings
-        loadKillRewardSettings();
 
         this.tridentCooldownTicks = plugin.getTimeFromConfig("trident_cooldown.duration", "10s");
         this.tridentCooldownSeconds = tridentCooldownTicks / 20;
@@ -185,24 +138,6 @@ public class CombatManager {
                 worldEnderPearlSettings.put(worldName, enabled);
             }
         }
-    }
-
-    private void startCleanupTask() {
-        if (cleanupTask != null) {
-            cleanupTask.cancel();
-        }
-
-        cleanupTask = Scheduler.runTaskTimerAsync(() -> {
-            long currentTime = System.currentTimeMillis();
-
-            // Clean up kill reward cooldowns
-            killRewardCooldowns.entrySet().removeIf(entry -> currentTime > entry.getValue());
-
-            // Log cleanup stats if debug enabled
-            if (plugin.getConfig().getBoolean("debug", false)) {
-                plugin.getLogger().info("Cleaned up kill reward cooldowns. Current size: " + killRewardCooldowns.size());
-            }
-        }, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
     }
 
     private void startGlobalCountdownTimer() {
@@ -554,63 +489,6 @@ public class CombatManager {
         return (int) Math.ceil(Math.max(0, (endTime - currentTime) / 1000.0));
     }
 
-    /**
-     * Gets the kill reward cooldown duration for a specific player
-     *
-     * @param killer The player who killed another player
-     * @param isSamePlayerCooldown Whether to use the same-player cooldown duration
-     * @return Cooldown duration in milliseconds
-     */
-    private long getKillRewardCooldownDuration(Player killer, boolean isSamePlayerCooldown) {
-        if (killer == null) return 0;
-
-        // Check if permission-based cooldowns are enabled
-        if (usePermissionBasedCooldowns) {
-            // Check for permission-based cooldowns, starting from most specific
-            for (Map.Entry<String, Long> entry : killRewardCooldownsByPermission.entrySet()) {
-                if (killer.hasPermission("celestcombat.cooldown." + entry.getKey())) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        // If it's a same-player cooldown and that setting is enabled
-        if (isSamePlayerCooldown && useSamePlayerCooldown) {
-            return samePlayerKillRewardCooldownTicks * 50; // Convert ticks to ms
-        }
-
-        // Default cooldown
-        return killRewardCooldownSeconds * 1000L;
-    }
-
-    /**
-     * Sets a kill reward cooldown for a specific killer-victim pair
-     *
-     * @param killer The player who killed another player
-     * @param victim The player who was killed
-     */
-    public void setKillRewardCooldown(Player killer, Player victim) {
-        if (killer == null || victim == null) return;
-
-        long currentTime = System.currentTimeMillis();
-        long expirationTime;
-
-        // If global cooldown is enabled, apply to all victims
-        if (useGlobalPlayerCooldown) {
-            // Create a key that applies to all victims for this killer
-            String globalKey = killer.getUniqueId() + ":global";
-            expirationTime = currentTime + getKillRewardCooldownDuration(killer, false);
-            killRewardCooldowns.put(globalKey, expirationTime);
-            plugin.debug("Set global kill reward cooldown for " + killer.getName() + " until " + expirationTime);
-        }
-
-        // Always set specific player cooldown
-        String specificKey = killer.getUniqueId() + ":" + victim.getUniqueId();
-        expirationTime = currentTime + getKillRewardCooldownDuration(killer, true);
-        killRewardCooldowns.put(specificKey, expirationTime);
-        plugin.debug("Set specific kill reward cooldown for " + killer.getName() + " killing " + victim.getName() + " until " + expirationTime);
-    }
-
     public boolean shouldDisableFlight(Player player) {
         if (player == null) return false;
 
@@ -747,7 +625,6 @@ public class CombatManager {
         playersInCombat.clear();
         combatOpponents.clear();
         enderPearlCooldowns.clear();
-        killRewardCooldowns.clear();
         tridentCooldowns.clear();
     }
 }

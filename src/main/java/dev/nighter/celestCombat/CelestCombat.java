@@ -13,6 +13,7 @@ import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
 import dev.nighter.celestCombat.listeners.TridentListener;
+import dev.nighter.celestCombat.rewards.KillRewardManager;
 import dev.nighter.celestCombat.updates.ConfigUpdater;
 import dev.nighter.celestCombat.updates.LanguageUpdater;
 import dev.nighter.celestCombat.updates.UpdateChecker;
@@ -36,6 +37,7 @@ public final class CelestCombat extends JavaPlugin {
     private TimeFormatter timeFormatter;
     private CommandManager commandManager;
     private CombatManager combatManager;
+    private KillRewardManager killRewardManager;
     private CombatListeners combatListeners;
     private EnderPearlListener enderPearlListener;
     private TridentListener tridentListener;
@@ -64,7 +66,7 @@ public final class CelestCombat extends JavaPlugin {
 
         deathAnimationManager = new DeathAnimationManager(this);
         combatManager = new CombatManager(this);
-
+        killRewardManager = new KillRewardManager(this);
         combatListeners = new CombatListeners(this);
         getServer().getPluginManager().registerEvents(combatListeners, this);
 
@@ -113,6 +115,10 @@ public final class CelestCombat extends JavaPlugin {
 
         if (worldGuardHook != null) {
             worldGuardHook.cleanup();
+        }
+
+        if (killRewardManager != null) {
+            killRewardManager.shutdown();
         }
 
         getLogger().info("CelestCombat has been disabled!");
