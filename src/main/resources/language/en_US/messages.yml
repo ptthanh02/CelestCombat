@@ -76,6 +76,27 @@ kill_reward_received:
   sound: entity.player.levelup
 
 # ------------------------------------------------------
+#              Newbie protection messages
+# ------------------------------------------------------
+newbie_protection_granted:
+  message: "&#4CAF50Granted newbie protection for &#FFFFFF%duration%&#4CAF50! You are safe from PvP."
+  title: "&#4CAF50PVP PROTECTION GRANTED"
+  subtitle: "&#66BB6AYou are now safe from PvP!"
+  sound: entity.player.levelup
+
+newbie_protection_attack_blocked:
+  message: "&#E94E77Cannot attack &#FFFFFF%player% &#E94E77because they have newbie protection!"
+  sound: entity.villager.no
+
+newbie_protection_removed_attack:
+  title: "&#FF9800PVP PROTECTION REMOVED"
+  subtitle: "&#E65100You attacked someone - PvP protection lost!"
+  sound: entity.wither.hurt
+
+newbie_protection_actionbar:
+  action_bar: "&#4CAF50PvP Protection: &#FFFFFF%time%"
+
+# ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
 combat_no_safezone_entry:
@@ -107,12 +128,15 @@ help_message:
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     &8» &#4A90E2/cc reload &#F5F5DC- Reload the plugin configuration
     &8» &#4A90E2/cc tag &#F5F5DC- Tag players in combat
-    &8» &#4A90E2/cc removeTag &#F5F5DC- Remove a player from combat
-    &8» &#4A90E2/cc removeTagWorld &#F5F5DC- Remove all players from combat in a world
-    &8» &#4A90E2/cc removeTagAll &#F5F5DC- Remove all players from combat server-wide
-    &8» &#4A90E2/cc checkKillCooldown &#F5F5DC- Check kill reward cooldown for a player
-    &8» &#4A90E2/cc clearKillCooldown &#F5F5DC- Clear kill reward cooldowns for a player
-    &8» &#4A90E2/cc clearallKillCooldowns &#F5F5DC- Clear all kill reward cooldowns server-wide
+    &8» &#4A90E2/cc removeTag player <player> &#F5F5DC- Remove a player from combat
+    &8» &#4A90E2/cc removeTag world <world> &#F5F5DC- Remove all players from combat in a world
+    &8» &#4A90E2/cc removeTag all &#F5F5DC- Remove all players from combat server-wide
+    &8» &#4A90E2/cc killReward check <player> [target] &#F5F5DC- Check kill reward cooldown
+    &8» &#4A90E2/cc killReward clear <player> &#F5F5DC- Clear kill reward cooldowns for a player
+    &8» &#4A90E2/cc killReward clearAll &#F5F5DC- Clear all kill reward cooldowns server-wide
+    &8» &#4A90E2/cc newbieProtection give <player> &#F5F5DC- Grant newbie protection to a player
+    &8» &#4A90E2/cc newbieProtection remove <player> &#F5F5DC- Remove newbie protection from a player
+    &8» &#4A90E2/cc newbieProtection check <player> &#F5F5DC- Check newbie protection status
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Reload command messages
@@ -190,4 +214,25 @@ kill_cooldown_remaining:
 
 kill_cooldown_remaining_target:
   message: "&e%player% has %time% remaining kill reward cooldown for %target%"
+  sound: block.note_block.pling
+
+# Newbie protection command messages
+newbie_protection_give_success:
+  message: "&#4CAF50Successfully granted newbie protection to %player%!"
+  sound: entity.experience_orb.pickup
+
+newbie_protection_remove_success:
+  message: "&#4CAF50Successfully removed newbie protection from %player%!"
+  sound: entity.experience_orb.pickup
+
+newbie_protection_already_has:
+  message: "&c%player% already has newbie protection!"
+  sound: entity.villager.no
+
+newbie_protection_not_protected:
+  message: "&c%player% does not have newbie protection!"
+  sound: entity.villager.no
+
+newbie_protection_check_protected:
+  message: "&#4CAF50%player% has newbie protection with %time% remaining"
   sound: block.note_block.pling

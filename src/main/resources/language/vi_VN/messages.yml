@@ -76,6 +76,27 @@ kill_reward_received:
   sound: entity.player.levelup
 
 # ------------------------------------------------------
+#              Newbie protection messages
+# ------------------------------------------------------
+newbie_protection_granted:
+  message: "&#4CAF50Cấp bảo vệ newbie &#FFFFFF%duration%&#4CAF50! Bạn an toàn trước PvP."
+  title: "&#4CAF50CẤP BẢO VỆ"
+  subtitle: "&#66BB6ABạn an toàn trước PvP!"
+  sound: entity.player.levelup
+
+newbie_protection_attack_blocked:
+  message: "&#E94E77Không thể tấn công &#FFFFFF%player% &#E94E77vì có bảo vệ newbie!"
+  sound: entity.villager.no
+
+newbie_protection_removed_attack:
+  title: "&#FF9800HỦY BẢO VỆ PVP"
+  subtitle: "&#E65100Tấn công người khác - mất bảo vệ PVP!"
+  sound: entity.wither.hurt
+
+newbie_protection_actionbar:
+  action_bar: "&#4CAF50Bảo vệ PvP: &#FFFFFF%time%"
+
+# ------------------------------------------------------
 # Safe zone messages for third-party protection plugins
 # ------------------------------------------------------
 combat_no_safezone_entry:
@@ -107,12 +128,15 @@ help_message:
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     &8» &#4A90E2/cc reload &#F5F5DC- Tải lại cấu hình plugin
     &8» &#4A90E2/cc tag &#F5F5DC- Đánh dấu người chơi đang trong combat
-    &8» &#4A90E2/cc removeTag &#F5F5DC- Gỡ trạng thái combat khỏi người chơi
-    &8» &#4A90E2/cc removeTagWorld &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trong một thế giới
-    &8» &#4A90E2/cc removeTagAll &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trên máy chủ
-    &8» &#4A90E2/cc checkKillCooldown &#F5F5DC- Kiểm tra thời gian hồi cooldown phần thưởng giết người chơi
-    &8» &#4A90E2/cc clearKillCooldown &#F5F5DC- Xóa thời gian hồi cooldown phần thưởng giết của người chơi
-    &8» &#4A90E2/cc clearallKillCooldowns &#F5F5DC- Xóa tất cả thời gian hồi cooldown phần thưởng giết trên máy chủ
+    &8» &#4A90E2/cc removeTag player <player> &#F5F5DC- Gỡ trạng thái combat khỏi người chơi
+    &8» &#4A90E2/cc removeTag world <world> &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trong một thế giới
+    &8» &#4A90E2/cc removeTag all &#F5F5DC- Gỡ trạng thái combat của toàn bộ người chơi trên máy chủ
+    &8» &#4A90E2/cc killReward check <player> [target] &#F5F5DC- Kiểm tra thời gian hồi cooldown phần thưởng giết người chơi
+    &8» &#4A90E2/cc killReward clear <player> &#F5F5DC- Xóa thời gian hồi cooldown phần thưởng giết của người chơi
+    &8» &#4A90E2/cc killReward clearAll &#F5F5DC- Xóa tất cả thời gian hồi cooldown phần thưởng giết trên máy chủ
+    &8» &#4A90E2/cc newbieProtection give <player> &#F5F5DC- Cấp bảo vệ cho người chơi mới
+    &8» &#4A90E2/cc newbieProtection remove <player> &#F5F5DC- Gỡ bỏ bảo vệ người chơi mới
+    &8» &#4A90E2/cc newbieProtection check <player> &#F5F5DC- Kiểm tra trạng thái bảo vệ người chơi mới
     &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Reload command messages
@@ -190,4 +214,25 @@ kill_cooldown_remaining:
 
 kill_cooldown_remaining_target:
   message: "&e%player% còn %time% thời gian hồi cooldown phần thưởng giết cho %target%"
+  sound: block.note_block.pling
+
+# Newbie protection command messages
+newbie_protection_give_success:
+  message: "&#4CAF50Đã cấp bảo vệ cho người chơi mới %player% thành công!"
+  sound: entity.experience_orb.pickup
+
+newbie_protection_remove_success:
+  message: "&#4CAF50Đã gỡ bỏ bảo vệ người chơi mới khỏi %player% thành công!"
+  sound: entity.experience_orb.pickup
+
+newbie_protection_already_has:
+  message: "&c%player% đã có bảo vệ người chơi mới rồi!"
+  sound: entity.villager.no
+
+newbie_protection_not_protected:
+  message: "&c%player% không có bảo vệ người chơi mới!"
+  sound: entity.villager.no
+
+newbie_protection_check_protected:
+  message: "&#4CAF50%player% có bảo vệ người chơi mới còn lại %time%"
   sound: block.note_block.pling

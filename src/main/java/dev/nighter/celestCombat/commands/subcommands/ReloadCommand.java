@@ -36,6 +36,9 @@ public class ReloadCommand extends BaseCommand {
 
         // Reload combat manager configuration
         plugin.getCombatManager().reloadConfig();
+        plugin.getKillRewardManager().loadConfig();
+        plugin.getNewbieProtectionManager().reloadConfig();
+        plugin.getCombatListeners().reload();
 
         // Send success message
         messageService.sendMessage(sender, "config_reloaded", placeholders);

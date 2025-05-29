@@ -1004,6 +1004,29 @@ public class LanguageManager {
         return result;
     }
 
+    public String colorize(String text) {
+        if (text == null) return null;
+
+        // Generate cache key
+        String cacheKey = "colorize|" + text;
+
+        // Check cache first
+        String cachedText = formattedStringCache.get(cacheKey);
+        if (cachedText != null) {
+            cacheHits.incrementAndGet();
+            return cachedText;
+        }
+
+        // Cache miss, colorize the text
+        cacheMisses.incrementAndGet();
+        String result = ColorUtil.translateHexColorCodes(text);
+
+        // Cache the result
+        formattedStringCache.put(cacheKey, result);
+
+        return result;
+    }
+
     public String getColorCode(String path) {
         if (!activeFileTypes.contains(LanguageFileType.GUI)) {
             return ChatColor.WHITE.toString();

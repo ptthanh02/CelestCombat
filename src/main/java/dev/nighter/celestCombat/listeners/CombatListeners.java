@@ -2,6 +2,10 @@ package dev.nighter.celestCombat.listeners;
 
 import dev.nighter.celestCombat.CelestCombat;
 import dev.nighter.celestCombat.combat.CombatManager;
+import dev.nighter.celestCombat.combat.DeathAnimationManager;
+import dev.nighter.celestCombat.language.MessageService;
+import dev.nighter.celestCombat.protection.NewbieProtectionManager;
+import dev.nighter.celestCombat.rewards.KillRewardManager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -25,7 +29,12 @@ import java.util.concurrent.TimeUnit;
 
 public class CombatListeners implements Listener {
     private final CelestCombat plugin;
-    private final CombatManager combatManager;
+    private CombatManager combatManager;
+    private NewbieProtectionManager newbieProtectionManager;
+    private KillRewardManager killRewardManager;
+    private DeathAnimationManager deathAnimationManager;
+    private MessageService messageService;
+
     private final Map<UUID, Boolean> playerLoggedOutInCombat = new ConcurrentHashMap<>();
     // Add a map to track the last damage source for each player
     private final Map<UUID, UUID> lastDamageSource = new ConcurrentHashMap<>();
@@ -37,9 +46,26 @@ public class CombatListeners implements Listener {
     public CombatListeners(CelestCombat plugin) {
         this.plugin = plugin;
         this.combatManager = plugin.getCombatManager();
+        this.newbieProtectionManager = plugin.getNewbieProtectionManager();
+        this.killRewardManager = plugin.getKillRewardManager();
+        this.deathAnimationManager = plugin.getDeathAnimationManager();
+        this.messageService = plugin.getMessageService();
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Reload all manager references to apply configuration changes
+     */
+    public void reload() {
+        this.combatManager = plugin.getCombatManager();
+        this.newbieProtectionManager = plugin.getNewbieProtectionManager();
+        this.killRewardManager = plugin.getKillRewardManager();
+        this.deathAnimationManager = plugin.getDeathAnimationManager();
+        this.messageService = plugin.getMessageService();
+
+        plugin.debug("CombatListeners managers reloaded successfully");
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         Player attacker = null;
         Player victim = null;
@@ -62,6 +88,34 @@ public class CombatListeners implements Listener {
             }
         }
 
+        // Handle newbie protection checks
+        // Check if victim has newbie protection from PvP
+        if (attacker != null && newbieProtectionManager.shouldProtectFromPvP() &&
+                newbieProtectionManager.hasProtection(victim)) {
+
+            // Handle the protection (sends messages and potentially removes protection)
+            boolean shouldBlock = newbieProtectionManager.handleDamageReceived(victim, attacker);
+            if (shouldBlock) {
+                event.setCancelled(true);
+                plugin.debug("Blocked PvP damage to protected newbie: " + victim.getName());
+                return;
+            }
+        }
+
+        // Check if victim has newbie protection from mobs (when attacker is null or not a player)
+        else if (attacker == null && newbieProtectionManager.shouldProtectFromMobs() &&
+                newbieProtectionManager.hasProtection(victim)) {
+            event.setCancelled(true);
+            plugin.debug("Blocked mob damage to protected newbie: " + victim.getName());
+            return;
+        }
+
+        // Handle when protected player deals damage (removes protection if configured)
+        if (attacker != null && newbieProtectionManager.hasProtection(attacker)) {
+            newbieProtectionManager.handleDamageDealt(attacker);
+        }
+
+        // Continue with normal combat logic if damage wasn't blocked
         if (attacker != null && victim != null && !attacker.equals(victim)) {
             // Track this as the most recent damage source
             lastDamageSource.put(victim.getUniqueId(), attacker.getUniqueId());
@@ -89,6 +143,9 @@ public class CombatListeners implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
+        // Handle newbie protection cleanup
+        newbieProtectionManager.handlePlayerQuit(player);
+
         if (combatManager.isInCombat(player)) {
             playerLoggedOutInCombat.put(player.getUniqueId(), true);
 
@@ -104,6 +161,9 @@ public class CombatListeners implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerKick(PlayerKickEvent event) {
         Player player = event.getPlayer();
+
+        // Handle newbie protection cleanup
+        newbieProtectionManager.handlePlayerQuit(player);
 
         if (combatManager.isInCombat(player)) {
             // Check if exempt_admin_kick is enabled and this was an admin kick
@@ -125,10 +185,10 @@ public class CombatListeners implements Listener {
                 combatManager.punishCombatLogout(player);
 
                 if (opponent != null && opponent.isOnline()) {
-                    plugin.getKillRewardManager().giveKillReward(opponent, player);
-                    plugin.getDeathAnimationManager().performDeathAnimation(player, opponent);
+                    killRewardManager.giveKillReward(opponent, player);
+                    deathAnimationManager.performDeathAnimation(player, opponent);
                 } else {
-                    plugin.getDeathAnimationManager().performDeathAnimation(player, null);
+                    deathAnimationManager.performDeathAnimation(player, null);
                 }
 
                 combatManager.removeFromCombatSilently(player);
@@ -145,13 +205,19 @@ public class CombatListeners implements Listener {
         Player killer = victim.getKiller();
         UUID victimId = victim.getUniqueId();
 
+        // Remove newbie protection on death (if they had it)
+        if (newbieProtectionManager.hasProtection(victim)) {
+            newbieProtectionManager.removeProtection(victim, false);
+            plugin.debug("Removed newbie protection from " + victim.getName() + " due to death");
+        }
+
         // If player directly killed by another player
         if (killer != null && !killer.equals(victim)) {
             // Execute kill reward commands using KillRewardManager
-            plugin.getKillRewardManager().giveKillReward(killer, victim);
+            killRewardManager.giveKillReward(killer, victim);
 
             // Perform death animation
-            plugin.getDeathAnimationManager().performDeathAnimation(victim, killer);
+            deathAnimationManager.performDeathAnimation(victim, killer);
 
             // Remove from combat
             combatManager.removeFromCombat(victim);
@@ -164,23 +230,23 @@ public class CombatListeners implements Listener {
             // Check if we have an opponent or a recent damage source
             if (opponent != null && opponent.isOnline()) {
                 // Give rewards to the combat opponent
-                plugin.getKillRewardManager().giveKillReward(opponent, victim);
-                plugin.getDeathAnimationManager().performDeathAnimation(victim, opponent);
+                killRewardManager.giveKillReward(opponent, victim);
+                deathAnimationManager.performDeathAnimation(victim, opponent);
             } else if (lastDamageSource.containsKey(victimId)) {
                 // Try to get the last player who damaged this player
                 UUID lastAttackerUuid = lastDamageSource.get(victimId);
                 Player lastAttacker = plugin.getServer().getPlayer(lastAttackerUuid);
 
                 if (lastAttacker != null && lastAttacker.isOnline() && !lastAttacker.equals(victim)) {
-                    plugin.getKillRewardManager().giveKillReward(lastAttacker, victim);
-                    plugin.getDeathAnimationManager().performDeathAnimation(victim, lastAttacker);
+                    killRewardManager.giveKillReward(lastAttacker, victim);
+                    deathAnimationManager.performDeathAnimation(victim, lastAttacker);
                 } else {
                     // No valid attacker found
-                    plugin.getDeathAnimationManager().performDeathAnimation(victim, null);
+                    deathAnimationManager.performDeathAnimation(victim, null);
                 }
             } else {
                 // No attacker information available
-                plugin.getDeathAnimationManager().performDeathAnimation(victim, null);
+                deathAnimationManager.performDeathAnimation(victim, null);
             }
 
             // Clean up combat state
@@ -194,7 +260,7 @@ public class CombatListeners implements Listener {
             lastDamageTime.remove(victimId);
         } else {
             // Player died outside of combat
-            plugin.getDeathAnimationManager().performDeathAnimation(victim, null);
+            deathAnimationManager.performDeathAnimation(victim, null);
 
             // Clean up any stale damage tracking
             lastDamageSource.remove(victimId);
@@ -207,11 +273,14 @@ public class CombatListeners implements Listener {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
 
+        // Handle newbie protection for new players
+        newbieProtectionManager.handlePlayerJoin(player);
+
         if (playerLoggedOutInCombat.containsKey(playerUUID)) {
             if (playerLoggedOutInCombat.get(playerUUID)) {
                 Map<String, String> placeholders = new HashMap<>();
                 placeholders.put("player", player.getName());
-                plugin.getMessageService().sendMessage(player, "player_died_combat_logout", placeholders);
+                messageService.sendMessage(player, "player_died_combat_logout", placeholders);
             }
             // Clean up the map to prevent memory leaks
             playerLoggedOutInCombat.remove(playerUUID);
@@ -268,7 +337,7 @@ public class CombatListeners implements Listener {
                 placeholders.put("player", player.getName());
                 placeholders.put("command", command);
                 placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
-                plugin.getMessageService().sendMessage(player, "command_blocked_in_combat", placeholders);
+                messageService.sendMessage(player, "command_blocked_in_combat", placeholders);
             }
         }
     }

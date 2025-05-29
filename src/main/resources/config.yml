@@ -177,6 +177,41 @@ kill_rewards:
     same_player_duration: 1d
 
 #---------------------------------------------------
+#              NEW PLAYER PROTECTION
+#---------------------------------------------------
+newbie_protection:
+  # Enable/disable the newbie protection system
+  enabled: true
+
+  # Duration of protection for new players
+  # Formats: 10s, 5m, 1h, 30m, etc.
+  duration: 10m
+
+  # Protection settings
+  protect_from_pvp: true      # Protect from player vs player damage
+  protect_from_mobs: false    # Protect from mob damage
+
+  # Removal conditions
+  remove_on_damage_dealt: true    # Remove protection when player deals damages to another player
+
+  # Display settings
+  display:
+    use_bossbar: true
+    use_actionbar: false
+
+    bossbar:
+      title: "&#4CAF50PvP Protection: &#FFFFFF%time%"
+      color: "GREEN"      # BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW
+      style: "SOLID"      # SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20
+
+  # World-specific settings (optional)
+  # If not specified, protection is enabled in all worlds
+  worlds:
+    world: true           # Enable protection in 'world'
+    world_nether: false   # Disable protection in 'world_nether'
+    world_the_end: false  # Disable protection in 'world_the_end'
+
+#---------------------------------------------------
 #              WORLDGUARD INTEGRATION
 #---------------------------------------------------
 # WorldGuard's barrier for no-pvp regions
