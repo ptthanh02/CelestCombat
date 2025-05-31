@@ -235,6 +235,16 @@ safezone_protection:
   # Higher values = stronger push back, lower values = gentler push
   push_back_force: 0.6
 
+  # Per-world configuration
+  # You can enable/disable safezone protection for specific worlds
+  # If a world is not listed here, it will use the global 'enabled' setting above
+  worlds:
+    # Example configurations:
+    spawn: true          # Enable in spawn world
+    world: false          # Disable in the main world
+    world_nether: false  # Disable in the nether
+    world_the_end: false  # Disable in the end
+
 #---------------------------------------------------
 #            GRIEFPREVENTION INTEGRATION
 #---------------------------------------------------
