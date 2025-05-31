@@ -18,6 +18,7 @@ A comprehensive combat management plugin for Minecraft servers specializing in P
 
 ### Optional Dependencies
 - **WorldGuard** - For safe zone integration and region protection
+- **GriefPrevention** - For claim-based protection systems
 
 ## Installation
 

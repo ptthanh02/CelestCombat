@@ -84,7 +84,7 @@ Built-in English and Vietnamese with easy custom translation system.
 # Example messages
 combat_countdown:
   action_bar: "&#4A90E2Combat: &#FFFFFF%time%s"
-  
+
 player_died_combat_logout:
   message: "&cYou previously logged out during combat and have been penalized."
   title: "&#E94E77COMBAT PENALTY"
@@ -97,6 +97,26 @@ combat_expired:
   sound: entity.experience_orb.pickup
 ```
 <br>
+
+### 🔌 Plugin Integrations
+
+<details>
+<summary><strong>🛡️Protection Plugins</strong></summary>
+
+### **[WorldGuard](https://modrinth.com/plugin/worldguard)**
+- **Safe Zone Barriers** - Visual barriers prevent players from entering protected regions during combat
+- **Custom Barrier Materials** - Choose from glass, barriers, or invisible blocks
+- **Performance Optimized** - Client-side barriers rendering for smooth gameplay
+
+### **[GriefPrevention](https://modrinth.com/plugin/griefprevention)**
+- **Claim Protection** - Visual barriers prevent players from entering protected claims during combat
+- **Custom Barrier Materials** - Choose from glass, barriers, or invisible blocks
+- **Performance Optimized** - Client-side barriers rendering for smooth gameplay
+- **Land Trust Integration** - Works with player trust levels and permissions
+
+*More integrations coming soon! Have a suggestion? Let us know on our Discord.*
+
+</details>
 
 ---
 
