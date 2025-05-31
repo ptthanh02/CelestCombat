@@ -135,7 +135,7 @@ public class NewbieProtectionManager {
             try {
                 protectionFile.getParentFile().mkdirs();
                 protectionFile.createNewFile();
-                plugin.getLogger().info("Created new newbie_protection_data.yml file");
+                plugin.debug("Created new newbie_protection_data.yml file");
             } catch (IOException e) {
                 plugin.getLogger().severe("Failed to create newbie_protection_data.yml: " + e.getMessage());
                 return;

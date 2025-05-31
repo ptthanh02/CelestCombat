@@ -11,6 +11,7 @@ import dev.nighter.celestCombat.language.MessageService;
 import dev.nighter.celestCombat.listeners.CombatListeners;
 import dev.nighter.celestCombat.listeners.EnderPearlListener;
 import dev.nighter.celestCombat.hooks.protection.WorldGuardHook;
+import dev.nighter.celestCombat.hooks.protection.GriefPreventionHook;
 import dev.nighter.celestCombat.listeners.ItemRestrictionListener;
 import dev.nighter.celestCombat.listeners.TridentListener;
 import dev.nighter.celestCombat.protection.NewbieProtectionManager;
@@ -45,8 +46,10 @@ public final class CelestCombat extends JavaPlugin {
     private DeathAnimationManager deathAnimationManager;
     private NewbieProtectionManager newbieProtectionManager;
     private WorldGuardHook worldGuardHook;
+    private GriefPreventionHook griefPreventionHook;
 
     public static boolean hasWorldGuard = false;
+    public static boolean hasGriefPrevention = false;
 
     @Override
     public void onEnable() {
@@ -81,12 +84,22 @@ public final class CelestCombat extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this, combatManager), this);
 
+        // WorldGuard integration
         if (hasWorldGuard && getConfig().getBoolean("safezone_protection.enabled", true)) {
             worldGuardHook = new WorldGuardHook(this, combatManager);
             getServer().getPluginManager().registerEvents(worldGuardHook, this);
             debug("WorldGuard safezone protection enabled");
         } else if(hasWorldGuard) {
             getLogger().info("Found WorldGuard but safe zone barrier is disabled in config.");
+        }
+
+        // GriefPrevention integration
+        if (hasGriefPrevention && getConfig().getBoolean("claim_protection.enabled", true)) {
+            griefPreventionHook = new GriefPreventionHook(this, combatManager);
+            getServer().getPluginManager().registerEvents(griefPreventionHook, this);
+            debug("GriefPrevention claim protection enabled");
+        } else if(hasGriefPrevention) {
+            getLogger().info("Found GriefPrevention but claim protection is disabled in config.");
         }
 
         commandManager = new CommandManager(this);
@@ -120,6 +133,10 @@ public final class CelestCombat extends JavaPlugin {
             worldGuardHook.cleanup();
         }
 
+        if (griefPreventionHook != null) {
+            griefPreventionHook.cleanup();
+        }
+
         if (killRewardManager != null) {
             killRewardManager.shutdown();
         }
@@ -136,6 +153,11 @@ public final class CelestCombat extends JavaPlugin {
         if (hasWorldGuard) {
             getLogger().info("WorldGuard integration enabled successfully!");
         }
+
+        hasGriefPrevention = isPluginEnabled("GriefPrevention") && isGriefPreventionAPIAvailable();
+        if (hasGriefPrevention) {
+            getLogger().info("GriefPrevention integration enabled successfully!");
+        }
     }
 
     private boolean isPluginEnabled(String pluginName) {
@@ -147,6 +169,15 @@ public final class CelestCombat extends JavaPlugin {
         try {
             Class.forName("com.sk89q.worldguard.WorldGuard");
             return WorldGuard.getInstance() != null;
+        } catch (ClassNotFoundException | NoClassDefFoundError e) {
+            return false;
+        }
+    }
+
+    private boolean isGriefPreventionAPIAvailable() {
+        try {
+            Class.forName("me.ryanhamshire.GriefPrevention.GriefPrevention");
+            return true;
         } catch (ClassNotFoundException | NoClassDefFoundError e) {
             return false;
         }
@@ -184,6 +215,10 @@ public final class CelestCombat extends JavaPlugin {
     public void reload() {
         if (worldGuardHook != null) {
             worldGuardHook.cleanup();
+        }
+
+        if (griefPreventionHook != null) {
+            griefPreventionHook.cleanup();
         }
     }
 }

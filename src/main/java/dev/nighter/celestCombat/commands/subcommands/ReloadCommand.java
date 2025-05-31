@@ -33,6 +33,9 @@ public class ReloadCommand extends BaseCommand {
         if (plugin.getWorldGuardHook() != null) {
             plugin.getWorldGuardHook().reloadConfig();
         }
+        if (plugin.getGriefPreventionHook() != null) {
+            plugin.getGriefPreventionHook().reloadConfig();
+        }
 
         // Reload combat manager configuration
         plugin.getCombatManager().reloadConfig();

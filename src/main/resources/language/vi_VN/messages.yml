@@ -114,6 +114,23 @@ killed_trying_to_enter_safezone_combat:
   sound: entity.wither.hurt
 
 # ------------------------------------------------------
+# Claim protection messages for GriefPrevention
+# ------------------------------------------------------
+combat_no_claim_entry:
+  message: "&cKhông thể vào vùng đất được bảo vệ khi đang combat! &#F39C12Vui lòng chờ &#FFFFFF%time% &#F39C12giây."
+  sound: block.note_block.pling
+
+combat_no_pearl_claim:
+  message: "&cKhông thể dùng ender pearl vào vùng đất được bảo vệ khi đang combat!"
+  sound: block.note_block.pling
+
+combat_killed_no_safe_location:
+  message: "&cBạn đã bị giết khi cố gắng vào vùng đất được bảo vệ trong combat."
+  title: "&#E94E77HÌNH PHẠT CHIẾN ĐẤU"
+  subtitle: "&#BF3A49Đừng vào vùng đất được bảo vệ khi đang trong combat!"
+  sound: entity.wither.hurt
+
+# ------------------------------------------------------
 #               Plugin command messages
 # ------------------------------------------------------
 no_permission:

@@ -82,7 +82,7 @@ public class KillRewardManager {
             try {
                 cooldownFile.getParentFile().mkdirs();
                 cooldownFile.createNewFile();
-                plugin.getLogger().info("Created new kill_cooldowns_data.yml file");
+                plugin.debug("Created new kill_cooldowns_data.yml file");
             } catch (IOException e) {
                 plugin.getLogger().severe("Failed to create kill_cooldowns_data.yml: " + e.getMessage());
                 return;

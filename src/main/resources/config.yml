@@ -234,3 +234,34 @@ safezone_protection:
   # Push force when player accidentally go inside the barrier blocks
   # Higher values = stronger push back, lower values = gentler push
   push_back_force: 0.6
+
+#---------------------------------------------------
+#            GRIEFPREVENTION INTEGRATION
+#---------------------------------------------------
+claim_protection:
+  # Enable/disable GriefPrevention integration for claim barriers
+  # This will prevent players in combat from entering protected claims
+  enabled: true
+
+  # Block type for the barrier around protected claims
+  # Set "BARRIER" for invisible but solid barrier
+  # Valid materials can be found at: https://jd.papermc.io/paper/1.21.5/org/bukkit/Material.html
+  barrier_material: "BLUE_STAINED_GLASS"
+
+  # How close the player needs to be to claim borders before barriers appear
+  barrier_detection_radius: 5 # blocks
+
+  # How tall the barriers are (blocks high from player level)
+  barrier_height: 3
+
+  # Push force when player tries to enter a protected claim
+  # Higher values = stronger push back, lower values = gentler push
+  push_back_force: 0.6
+
+  # Player claim's permission to bypass claim barriers (player can enter claims while in combat)
+  # EDIT - Can edit claims settings for admins (not recommended for regular players)
+  # MANAGE - Can manage claim settings (most restrictive)
+  # BUILD - Can place/break blocks in the claim (default, good balance)
+  # CONTAINER - Can access containers inventory in the claim (least restrictive)
+  # ACCESS - Can access the claim's bed, buttons and levers (recommended for most cases)
+  required_permission: BUILD
