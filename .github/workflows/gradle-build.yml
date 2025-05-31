@@ -23,7 +23,8 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -32,7 +33,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
 
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v2
@@ -40,16 +40,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: 8.8
-
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
-      - name: Build with Gradle
-        run: ./gradlew build --no-daemon
-
-      - name: Run tests
-        run: ./gradlew test --no-daemon
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Extract version
         id: extract_version
@@ -60,12 +51,15 @@ jobs:
           echo "COMMIT_SHA_SHORT=$COMMIT_SHA_SHORT" >> $GITHUB_ENV
           echo "Version: $VERSION (Commit: $COMMIT_SHA_SHORT)"
 
+      - name: Build and test
+        run: ./gradlew build --parallel --build-cache --configuration-cache
+
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: CelestCombat-${{ env.VERSION }}
           path: build/libs/CelestCombat-${{ env.VERSION }}.jar
-          retention-days: 90
+          retention-days: 30
           if-no-files-found: error
 
       - name: Upload test reports on failure
@@ -75,13 +69,3 @@ jobs:
           name: test-reports-${{ env.COMMIT_SHA_SHORT }}
           path: build/reports/tests/
           retention-days: 7
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
