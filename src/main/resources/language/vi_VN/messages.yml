@@ -40,7 +40,7 @@ pearl_only_countdown:
   action_bar: "&#E94E77Ngọc Ender hồi: &#FFFFFF%pearl_time%s"
 
 combat_pearl_countdown:
-  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s, &#E94E77Ngọc Ender hồi: &#FFFFFF%pearl_time%s"
+  action_bar: "&#4A90E2Combat: &#FFFFFF%combat_time%s &#8B8B8B| &#E94E77Ngọc Ender hồi: &#FFFFFF%pearl_time%s"
 
 # ------------------------------------------------------
 #                Trident messages

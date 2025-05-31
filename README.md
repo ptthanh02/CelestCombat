@@ -21,35 +21,22 @@ A comprehensive combat management plugin for Minecraft servers specializing in P
 
 ## Installation
 
-1. Download the latest release from [Modrinth](https://modrinth.com/plugin/celest-combat-plugin) or [SpigotMC](https://www.spigotmc.org/resources/123515/)
+1. Download the latest release from [Modrinth](https://modrinth.com/plugin/celest-combat-plugin)
 2. Place the `.jar` file in your server's `plugins` folder
 3. Restart your server
 4. Configure the plugin in `plugins/CelestCombat/config.yml`
 5. Reload with `/cc reload`
 
-## Configuration
-
-The plugin generates a comprehensive configuration file on first run. Key configuration sections include:
-
-- **Combat Settings** - Duration, tagging conditions, and behavior
-- **Command Restrictions** - Blacklist/whitelist modes for combat restrictions
-- **Item Restrictions** - Control item usage during combat
-- **Visual Effects** - Boss bars, action bars, and particle effects
-- **Newbie Protection** - Protection settings for new players
-- **Kill Rewards** - Reward system configuration
-- **Messages** - Customizable language and message system
-
 ## Commands
 
 | Command | Permission | Description |
 |---------|------------|-------------|
-| `/celestcombat` | `celestcombat.command.use` | Main plugin command |
 | `/cc help` | `celestcombat.command.use` | Display command help |
 | `/cc reload` | `celestcombat.command.use` | Reload plugin configuration |
 | `/cc tag <player1> [player2]` | `celestcombat.command.use` | Manually tag players in combat |
 | `/cc removetag <player/world/all>` | `celestcombat.command.use` | Remove combat tags |
 
-**Aliases:** `/cc`, `/combat`
+**Aliases:** `/cc`, `/combat`, `/celestcombat`
 
 ## Permissions
 
