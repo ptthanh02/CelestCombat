@@ -12,6 +12,7 @@ import dev.nighter.celestCombat.Scheduler;
 import dev.nighter.celestCombat.combat.CombatManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Player;
@@ -50,6 +51,8 @@ public class WorldGuardHook implements Listener {
     private final Map<Location, Set<UUID>> barrierViewers = new ConcurrentHashMap<>();
 
     // Configuration
+    private boolean globalEnabled;
+    private Map<String, Boolean> worldSettings;
     private int barrierDetectionRadius;
     private int barrierHeight;
     private Material barrierMaterial;
@@ -113,6 +116,8 @@ public class WorldGuardHook implements Listener {
     }
 
     public void reloadConfig() {
+        this.globalEnabled = plugin.getConfig().getBoolean("safezone_protection.enabled", true);
+        this.worldSettings = loadWorldSettings();
         this.barrierDetectionRadius = plugin.getConfig().getInt("safezone_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("safezone_protection.barrier_height", 3);
         this.barrierMaterial = loadBarrierMaterial();
@@ -122,6 +127,45 @@ public class WorldGuardHook implements Listener {
         safeZoneCache.clear();
         regionCheckCache.clear();
         regionManagerCache.clear();
+
+        plugin.debug("WorldGuard safezone protection - Global enabled: " + globalEnabled);
+        plugin.debug("WorldGuard safezone protection - World settings: " + worldSettings);
+    }
+
+    private Map<String, Boolean> loadWorldSettings() {
+        Map<String, Boolean> settings = new HashMap<>();
+
+        if (plugin.getConfig().isConfigurationSection("safezone_protection.worlds")) {
+            Set<String> worldKeys = plugin.getConfig().getConfigurationSection("safezone_protection.worlds").getKeys(false);
+            for (String worldName : worldKeys) {
+                boolean enabled = plugin.getConfig().getBoolean("safezone_protection.worlds." + worldName, globalEnabled);
+                settings.put(worldName, enabled);
+                plugin.debug("World '" + worldName + "' safezone protection: " + enabled);
+            }
+        }
+
+        return settings;
+    }
+
+    private boolean isEnabledInWorld(World world) {
+        if (world == null) return false;
+
+        String worldName = world.getName();
+
+        // Check if there's a specific setting for this world
+        if (worldSettings.containsKey(worldName)) {
+            return worldSettings.get(worldName);
+        }
+
+        // Fall back to global setting
+        return globalEnabled;
+    }
+
+    /**
+     * Check if safezone protection is enabled for a specific location
+     */
+    private boolean isEnabledInWorld(Location location) {
+        return location != null && isEnabledInWorld(location.getWorld());
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -132,6 +176,10 @@ public class WorldGuardHook implements Listener {
         if (!(source instanceof Player)) return;
 
         Player player = (Player) source;
+
+        // Check if enabled in this world
+        if (!isEnabledInWorld(player.getWorld())) return;
+
         if (combatManager.isInCombat(player)) {
             combatPlayerPearls.put(event.getEntity().getUniqueId(), player.getUniqueId());
             pearlThrowLocations.put(player.getUniqueId(), new PearlLocationData(player.getLocation()));
@@ -141,6 +189,9 @@ public class WorldGuardHook implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
         if (!(event.getEntity() instanceof EnderPearl)) return;
+
+        Location hitLocation = event.getEntity().getLocation();
+        if (!isEnabledInWorld(hitLocation)) return;
 
         UUID projectileId = event.getEntity().getUniqueId();
         UUID playerUUID = combatPlayerPearls.remove(projectileId);
@@ -211,6 +262,12 @@ public class WorldGuardHook implements Listener {
 
         Player player = event.getPlayer();
 
+        // Check if enabled in this world
+        if (!isEnabledInWorld(player.getWorld())) {
+            removePlayerBarriers(player);
+            return;
+        }
+
         if (!combatManager.isInCombat(player)) {
             removePlayerBarriers(player);
             return;
@@ -252,6 +309,12 @@ public class WorldGuardHook implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+
+        // Check if enabled in this world
+        if (!isEnabledInWorld(player.getWorld())) {
+            removePlayerBarriers(player);
+            return;
+        }
 
         if (!combatManager.isInCombat(player)) {
             removePlayerBarriers(player);
@@ -297,6 +360,9 @@ public class WorldGuardHook implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // Check if enabled in this world
+        if (!isEnabledInWorld(event.getBlock().getWorld())) return;
+
         Location blockLoc = normalizeToBlockLocation(event.getBlock().getLocation());
         if (originalBlocks.containsKey(blockLoc)) {
             event.setCancelled(true);
@@ -478,7 +544,7 @@ public class WorldGuardHook implements Listener {
             UUID playerUUID = entry.getKey();
             Player player = plugin.getServer().getPlayer(playerUUID);
 
-            if (player == null || !player.isOnline() || !combatManager.isInCombat(player)) {
+            if (player == null || !player.isOnline() || !combatManager.isInCombat(player) || !isEnabledInWorld(player.getWorld())) {
                 Set<Location> barriers = entry.getValue();
                 if (player != null && player.isOnline()) {
                     for (Location loc : barriers) {
@@ -646,9 +712,7 @@ public class WorldGuardHook implements Listener {
 
         Long lastTime = lastMessageTime.get(playerUUID);
         if (lastTime != null && currentTime - lastTime < MESSAGE_COOLDOWN) return;
-
         lastMessageTime.put(playerUUID, currentTime);
-
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("player", player.getName());
         placeholders.put("time", String.valueOf(combatManager.getRemainingCombatTime(player)));
@@ -687,5 +751,6 @@ public class WorldGuardHook implements Listener {
         regionCheckCache.clear();
         regionManagerCache.clear();
         lastBarrierUpdate.clear();
+        worldSettings.clear();
     }
 }

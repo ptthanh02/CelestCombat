@@ -8,6 +8,7 @@ import me.ryanhamshire.GriefPrevention.ClaimPermission;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,6 +39,8 @@ public class GriefPreventionHook implements Listener {
     private final Map<Location, Set<UUID>> barrierViewers = new ConcurrentHashMap<>();
 
     // Configuration
+    private boolean globalEnabled;
+    private final Map<String, Boolean> worldSettings = new HashMap<>();
     private int barrierDetectionRadius;
     private int barrierHeight;
     private Material barrierMaterial;
@@ -63,19 +66,55 @@ public class GriefPreventionHook implements Listener {
 
     public void reloadConfig() {
         // Reload configuration
+        this.globalEnabled = plugin.getConfig().getBoolean("claim_protection.enabled", true);
         this.barrierDetectionRadius = plugin.getConfig().getInt("claim_protection.barrier_detection_radius", 5);
         this.barrierHeight = plugin.getConfig().getInt("claim_protection.barrier_height", 3);
         this.barrierMaterial = loadBarrierMaterial();
         this.pushBackForce = plugin.getConfig().getDouble("claim_protection.push_back_force", 0.6);
         this.requiredPermission = loadRequiredPermission();
 
+        // Load per-world settings
+        loadWorldSettings();
+
         // Clear cache when config reloads
         claimCache.clear();
     }
 
-    /**
-     * Loads and validates the required claim permission from config
-     */
+    private void loadWorldSettings() {
+        worldSettings.clear();
+
+        if (plugin.getConfig().isConfigurationSection("claim_protection.worlds")) {
+            var worldSection = plugin.getConfig().getConfigurationSection("claim_protection.worlds");
+            if (worldSection != null) {
+                for (String worldName : worldSection.getKeys(false)) {
+                    boolean enabled = worldSection.getBoolean(worldName, globalEnabled);
+                    worldSettings.put(worldName, enabled);
+                    plugin.debug("Claim protection for world '" + worldName + "': " + (enabled ? "enabled" : "disabled"));
+                }
+            }
+        }
+
+        plugin.debug("Loaded " + worldSettings.size() + " world-specific claim protection settings");
+    }
+
+    private boolean isEnabledInWorld(World world) {
+        if (world == null) return false;
+
+        String worldName = world.getName();
+
+        // Check if there's a specific setting for this world
+        if (worldSettings.containsKey(worldName)) {
+            return worldSettings.get(worldName);
+        }
+
+        // Fall back to global setting
+        return globalEnabled;
+    }
+
+    private boolean isEnabledAtLocation(Location location) {
+        return location != null && isEnabledInWorld(location.getWorld());
+    }
+
     private ClaimPermission loadRequiredPermission() {
         String permissionName = plugin.getConfig().getString("claim_protection.required_permission", "BUILD");
 
@@ -118,6 +157,13 @@ public class GriefPreventionHook implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
 
+        // Skip if claim protection is not enabled in this world
+        if (!isEnabledAtLocation(event.getTo())) {
+            // Remove any existing barriers for this player if protection is disabled
+            removePlayerBarriers(player);
+            return;
+        }
+
         // Skip event if player is not in combat
         if (!combatManager.isInCombat(player)) {
             // Remove any barriers for this player
@@ -153,6 +199,12 @@ public class GriefPreventionHook implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+
+        // Skip if claim protection is not enabled in this world
+        if (!isEnabledAtLocation(player.getLocation())) {
+            removePlayerBarriers(player);
+            return;
+        }
 
         if (!combatManager.isInCombat(player)) {
             removePlayerBarriers(player);
@@ -221,6 +273,11 @@ public class GriefPreventionHook implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // Skip if claim protection is not enabled in this world
+        if (!isEnabledAtLocation(event.getBlock().getLocation())) {
+            return;
+        }
+
         Location blockLoc = normalizeToBlockLocation(event.getBlock().getLocation());
 
         // Check if this block is part of a barrier system
@@ -299,6 +356,12 @@ public class GriefPreventionHook implements Listener {
      * Updates visual barriers for a combat player based on their current location
      */
     private void updatePlayerBarriers(Player player) {
+        // Skip if claim protection is not enabled in this world
+        if (!isEnabledAtLocation(player.getLocation())) {
+            removePlayerBarriers(player);
+            return;
+        }
+
         if (!combatManager.isInCombat(player)) {
             removePlayerBarriers(player);
             return;
@@ -621,5 +684,6 @@ public class GriefPreventionHook implements Listener {
         barrierViewers.clear();
         lastMessageTime.clear();
         claimCache.clear();
+        worldSettings.clear();
     }
 }

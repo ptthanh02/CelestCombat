@@ -153,7 +153,7 @@ kill_rewards:
   # Variables: %killer% = killer's name, %victim% = victim's name
   commands:
     - "donutcratecore shards give %killer% 10"
-    - "say %killer% eliminated %victim%!"
+    # add more commands as needed
 
   cooldown:
     # Global cooldown system
@@ -238,12 +238,14 @@ safezone_protection:
   # Per-world configuration
   # You can enable/disable safezone protection for specific worlds
   # If a world is not listed here, it will use the global 'enabled' setting above
+  # Setting correctly will help save server performance
   worlds:
     # Example configurations:
-    spawn: true          # Enable in spawn world
-    world: false          # Disable in the main world
+    spawn_world: true          # Enable in spawn world
+    world: true          # Enable in the main world
     world_nether: false  # Disable in the nether
     world_the_end: false  # Disable in the end
+    # Add more worlds as needed
 
 #---------------------------------------------------
 #            GRIEFPREVENTION INTEGRATION
@@ -251,7 +253,7 @@ safezone_protection:
 claim_protection:
   # Enable/disable GriefPrevention integration for claim barriers
   # This will prevent players in combat from entering protected claims
-  enabled: true
+  enabled: false
 
   # Block type for the barrier around protected claims
   # Set "BARRIER" for invisible but solid barrier
@@ -275,3 +277,14 @@ claim_protection:
   # CONTAINER - Can access containers inventory in the claim (least restrictive)
   # ACCESS - Can access the claim's bed, buttons and levers (recommended for most cases)
   required_permission: BUILD
+
+  # Per-world configuration
+  # You can enable/disable claim protection for specific worlds
+  # If a world is not listed here, it will use the global 'enabled' setting above
+  # Setting correctly will help save server performance
+  worlds:
+    # Example configurations:
+    world: true                # Enable in the main world
+    world_nether: true        # Enable in the nether
+    world_the_end: false       # Disable in the end
+    # Add more worlds as needed
